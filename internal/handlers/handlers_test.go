@@ -7,11 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grnsv/shortener/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandleShortenURL(t *testing.T) {
+	ts := httptest.NewServer(Router())
+	defer ts.Close()
+
 	type req struct {
 		method      string
 		body        string
@@ -75,32 +79,45 @@ func TestHandleShortenURL(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		request := httptest.NewRequest(tt.req.method, "/", strings.NewReader(tt.req.body))
-		request.Header.Add("Content-Type", tt.req.contentType)
-		w := httptest.NewRecorder()
-		HandleShortenURL(w, request)
+		request, err := http.NewRequest(tt.req.method, ts.URL, strings.NewReader(tt.req.body))
+		require.NoError(t, err, tt.name)
 
-		res := w.Result()
-		assert.Equal(t, tt.want.statusCode, res.StatusCode)
+		request.Header.Add("Content-Type", tt.req.contentType)
+
+		res, err := ts.Client().Do(request)
+		require.NoError(t, err, tt.name)
+
+		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
 		defer res.Body.Close()
 		resBody, err := io.ReadAll(res.Body)
 
 		require.NoError(t, err)
-		assert.Contains(t, string(resBody), tt.want.body)
-		assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+		assert.Contains(t, string(resBody), tt.want.body, tt.name)
+		assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"), tt.name)
 	}
 }
 
 func TestHandleExpandURL(t *testing.T) {
-	request := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://practicum.yandex.ru/"))
+	ts := httptest.NewServer(Router())
+	defer ts.Close()
+
+	client := ts.Client()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	request, err := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader("https://practicum.yandex.ru/"))
+	require.NoError(t, err)
+
 	request.Header.Add("Content-Type", "text/plain")
-	w := httptest.NewRecorder()
-	HandleShortenURL(w, request)
-	res := w.Result()
+
+	res, err := client.Do(request)
+	require.NoError(t, err)
+
 	defer res.Body.Close()
 	resBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	shorten := string(resBody)
+	shorten := strings.Split(string(resBody), config.ServerAddress)[1]
 
 	type req struct {
 		method string
@@ -158,13 +175,14 @@ func TestHandleExpandURL(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		request = httptest.NewRequest(tt.req.method, tt.req.target, nil)
-		w = httptest.NewRecorder()
-		HandleExpandURL(w, request)
+		request, err := http.NewRequest(tt.req.method, ts.URL+tt.req.target, nil)
+		require.NoError(t, err, tt.name)
 
-		res = w.Result()
+		res, err := client.Do(request)
+		require.NoError(t, err, tt.name)
 		defer res.Body.Close()
-		assert.Equal(t, tt.want.statusCode, res.StatusCode)
-		assert.Equal(t, tt.want.location, res.Header.Get("Location"))
+
+		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
+		assert.Equal(t, tt.want.location, res.Header.Get("Location"), tt.name)
 	}
 }

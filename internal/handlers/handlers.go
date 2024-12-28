@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/grnsv/shortener/internal/util"
 )
@@ -28,6 +29,7 @@ func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w)
@@ -56,7 +58,7 @@ func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := strings.TrimPrefix(r.URL.Path, "/")
+	shortURL := chi.URLParam(r, "id")
 	if shortURL == "" {
 		writeError(w)
 		return
@@ -71,8 +73,7 @@ func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Location", url)
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
 func writeError(w http.ResponseWriter) {

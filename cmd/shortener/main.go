@@ -9,11 +9,8 @@ import (
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.HandleShortenURL)
-	mux.HandleFunc("/{id}", handlers.HandleExpandURL)
-
-	if err := http.ListenAndServe(config.ServerAddress, mux); err != nil {
+	r := handlers.Router()
+	if err := http.ListenAndServe(config.ServerAddress, r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
