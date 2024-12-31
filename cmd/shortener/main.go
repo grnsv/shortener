@@ -10,7 +10,7 @@ import (
 
 func main() {
 	r := handlers.Router()
-	if err := http.ListenAndServe(config.ServerAddress, r); err != nil {
+	if err := http.ListenAndServe(config.Get().ServerAddress.String(), r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

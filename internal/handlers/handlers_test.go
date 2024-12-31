@@ -117,7 +117,7 @@ func TestHandleExpandURL(t *testing.T) {
 	defer res.Body.Close()
 	resBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	shorten := strings.Split(string(resBody), config.ServerAddress)[1]
+	shorten := strings.Split(string(resBody), config.Get().BaseAddress.String())[1]
 
 	type req struct {
 		method string
