@@ -82,6 +82,28 @@ func (b *BaseURI) UnmarshalText(text []byte) error {
 	return b.Set(string(text))
 }
 
+type Option func(*Config)
+
+func WithServerAddress(addr NetAddress) Option {
+	return func(c *Config) {
+		c.ServerAddress = addr
+	}
+}
+
+func WithBaseAddress(url BaseURI) Option {
+	return func(c *Config) {
+		c.BaseAddress = url
+	}
+}
+
+func NewConfig(opts ...Option) *Config {
+	c := &Config{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
 var config *Config
 
 func Get() Config {
@@ -89,10 +111,10 @@ func Get() Config {
 		return *config
 	}
 
-	config = &Config{
-		ServerAddress: NetAddress{"localhost", 8080},
-		BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
-	}
+	config = NewConfig(
+		WithServerAddress(NetAddress{"localhost", 8080}),
+		WithBaseAddress(BaseURI{"http://", NetAddress{"localhost", 8080}}),
+	)
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
 	flag.Parse()
