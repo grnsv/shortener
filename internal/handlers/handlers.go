@@ -4,16 +4,10 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/config"
-	"github.com/grnsv/shortener/internal/util"
-)
-
-var (
-	urlMap = make(map[string]string)
-	mu     sync.RWMutex
+	"github.com/grnsv/shortener/internal/service"
 )
 
 func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
@@ -40,11 +34,7 @@ func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := util.GenerateShortURL(body)
-
-	mu.Lock()
-	urlMap[shortURL] = string(body)
-	mu.Unlock()
+	shortURL := service.ShortenURL(string(body))
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -63,9 +53,7 @@ func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.RLock()
-	url, exists := urlMap[shortURL]
-	mu.RUnlock()
+	url, exists := service.ExpandURL(shortURL)
 
 	if !exists {
 		writeError(w)
