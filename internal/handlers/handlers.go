@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -49,7 +48,7 @@ func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", config.ServerAddress, shortURL)))
+	w.Write([]byte(config.Get().BaseAddress.String() + "/" + shortURL))
 }
 
 func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
