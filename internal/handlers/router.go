@@ -8,8 +8,9 @@ import (
 
 func Router() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/", HandleShortenURL)
-	r.Get("/{id}", HandleExpandURL)
+	handler := NewURLHandler()
+	r.Post("/", handler.ShortenURL)
+	r.Get("/{id}", handler.ExpandURL)
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	})

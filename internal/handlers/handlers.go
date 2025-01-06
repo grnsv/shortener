@@ -10,7 +10,15 @@ import (
 	"github.com/grnsv/shortener/internal/service"
 )
 
-func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
+type URLHandler struct {
+	shortener *service.URLShortener
+}
+
+func NewURLHandler() *URLHandler {
+	return &URLHandler{shortener: service.NewURLShortener()}
+}
+
+func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w)
 		return
@@ -34,14 +42,14 @@ func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := service.ShortenURL(string(body))
+	shortURL := h.shortener.ShortenURL(string(body))
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(config.Get().BaseAddress.String() + "/" + shortURL))
 }
 
-func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
+func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w)
 		return
@@ -53,7 +61,7 @@ func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, exists := service.ExpandURL(shortURL)
+	url, exists := h.shortener.ExpandURL(shortURL)
 
 	if !exists {
 		writeError(w)
