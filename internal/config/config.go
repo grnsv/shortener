@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"strings"
 
@@ -30,10 +31,20 @@ func (a *NetAddress) Set(s string) error {
 	if len(hp) != 2 {
 		return errors.New("address must be in a form host:port")
 	}
+
+	_, err := net.LookupHost(hp[0])
+	if err != nil {
+		return fmt.Errorf("host is invalid or unreachable: %w", err)
+	}
+
 	port, err := strconv.Atoi(hp[1])
 	if err != nil {
 		return fmt.Errorf("invalid port: %w", err)
 	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535, %d given", port)
+	}
+
 	a.Host = hp[0]
 	a.Port = port
 	return nil
@@ -74,19 +85,22 @@ func (b *BaseURI) UnmarshalText(text []byte) error {
 var config *Config
 
 func Get() Config {
-	if config == nil {
-		config = &Config{
-			ServerAddress: NetAddress{"localhost", 8080},
-			BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
-		}
-		flag.Var(&config.ServerAddress, "a", "Address for server")
-		flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
-		flag.Parse()
-
-		err := env.Parse(config)
-		if err != nil {
-			log.Fatalf("Failed to parse env: %v", err)
-		}
+	if config != nil {
+		return *config
 	}
+
+	config = &Config{
+		ServerAddress: NetAddress{"localhost", 8080},
+		BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
+	}
+	flag.Var(&config.ServerAddress, "a", "Address for server")
+	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
+	flag.Parse()
+
+	err := env.Parse(config)
+	if err != nil {
+		log.Fatalf("Failed to parse env: %v", err)
+	}
+
 	return *config
 }
