@@ -4,19 +4,21 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/config"
-	"github.com/grnsv/shortener/internal/util"
+	"github.com/grnsv/shortener/internal/service"
 )
 
-var (
-	urlMap = make(map[string]string)
-	mu     sync.RWMutex
-)
+type URLHandler struct {
+	shortener *service.URLShortener
+}
 
-func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
+func NewURLHandler() *URLHandler {
+	return &URLHandler{shortener: service.NewURLShortener()}
+}
+
+func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w)
 		return
@@ -40,18 +42,14 @@ func HandleShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := util.GenerateShortURL(body)
-
-	mu.Lock()
-	urlMap[shortURL] = string(body)
-	mu.Unlock()
+	shortURL := h.shortener.ShortenURL(string(body))
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(config.Get().BaseAddress.String() + "/" + shortURL))
 }
 
-func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
+func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w)
 		return
@@ -63,9 +61,7 @@ func HandleExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mu.RLock()
-	url, exists := urlMap[shortURL]
-	mu.RUnlock()
+	url, exists := h.shortener.ExpandURL(shortURL)
 
 	if !exists {
 		writeError(w)
