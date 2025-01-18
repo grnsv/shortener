@@ -1,4 +1,4 @@
-package handlers
+package api
 
 import (
 	"net/http"
@@ -9,8 +9,8 @@ import (
 func Router() chi.Router {
 	r := chi.NewRouter()
 	handler := NewURLHandler()
-	r.Post("/", handler.ShortenURL)
-	r.Get("/{id}", handler.ExpandURL)
+	r.Post("/", WithLogging(handler.ShortenURL))
+	r.Get("/{id}", WithLogging(handler.ExpandURL))
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	})
