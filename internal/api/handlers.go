@@ -1,12 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/config"
+	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
 )
 
@@ -46,7 +48,47 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(config.Get().BaseAddress.String() + "/" + shortURL))
+	_, err = w.Write([]byte(config.Get().BaseAddress.String() + "/" + shortURL))
+	if err != nil {
+		writeError(w)
+	}
+}
+
+func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w)
+		return
+	}
+
+	contentType := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "application/json") {
+		writeError(w)
+		return
+	}
+
+	var req models.ShortenRequest
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		writeError(w)
+		return
+	}
+
+	if len(req.URL) == 0 {
+		writeError(w)
+		return
+	}
+
+	shortURL := h.shortener.ShortenURL(req.URL)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(models.ShortenResponse{
+		Result: config.Get().BaseAddress.String() + "/" + shortURL,
+	})
+	if err != nil {
+		writeError(w)
+	}
 }
 
 func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {

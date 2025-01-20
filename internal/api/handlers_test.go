@@ -1,6 +1,8 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/grnsv/shortener/internal/config"
+	"github.com/grnsv/shortener/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -88,11 +91,14 @@ func TestHandleShortenURL(t *testing.T) {
 		require.NoError(t, err, tt.name)
 
 		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
-		defer res.Body.Close()
-		resBody, err := io.ReadAll(res.Body)
+		if tt.want.body != "" {
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
 
-		require.NoError(t, err)
-		assert.Contains(t, string(resBody), tt.want.body, tt.name)
+			require.NoError(t, err, tt.name)
+			assert.Contains(t, string(resBody), tt.want.body, tt.name)
+		}
+
 		assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"), tt.name)
 	}
 }
@@ -184,5 +190,99 @@ func TestHandleExpandURL(t *testing.T) {
 
 		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
 		assert.Equal(t, tt.want.location, res.Header.Get("Location"), tt.name)
+	}
+}
+
+func TestHandleShortenURLJSON(t *testing.T) {
+	ts := httptest.NewServer(Router())
+	defer ts.Close()
+
+	type req struct {
+		method      string
+		body        models.ShortenRequest
+		contentType string
+	}
+	type want struct {
+		statusCode  int
+		body        models.ShortenResponse
+		contentType string
+	}
+	tests := []struct {
+		name string
+		req  req
+		want want
+	}{
+		{
+			name: "positive test",
+			req: req{
+				method:      http.MethodPost,
+				body:        models.ShortenRequest{URL: "https://practicum.yandex.ru/"},
+				contentType: "application/json",
+			},
+			want: want{
+				statusCode: http.StatusCreated,
+				body: models.ShortenResponse{
+					Result: "http://",
+				},
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "invalid method",
+			req: req{
+				method:      http.MethodGet,
+				body:        models.ShortenRequest{URL: "https://practicum.yandex.ru/"},
+				contentType: "application/json",
+			},
+			want: want{
+				statusCode: http.StatusBadRequest,
+			},
+		},
+		{
+			name: "invalid content type",
+			req: req{
+				method:      http.MethodPost,
+				body:        models.ShortenRequest{URL: "https://practicum.yandex.ru/"},
+				contentType: "text/plain",
+			},
+			want: want{
+				statusCode: http.StatusBadRequest,
+			},
+		},
+		{
+			name: "empty body",
+			req: req{
+				method:      http.MethodPost,
+				body:        models.ShortenRequest{URL: ""},
+				contentType: "application/json",
+			},
+			want: want{
+				statusCode: http.StatusBadRequest,
+			},
+		},
+	}
+	for _, tt := range tests {
+		body, err := json.Marshal(tt.req.body)
+		require.NoError(t, err, tt.name)
+
+		request, err := http.NewRequest(tt.req.method, ts.URL+"/api/shorten", bytes.NewReader(body))
+		require.NoError(t, err, tt.name)
+
+		request.Header.Add("Content-Type", tt.req.contentType)
+
+		res, err := ts.Client().Do(request)
+		require.NoError(t, err, tt.name)
+
+		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
+		if tt.want.body.Result != "" {
+			var resp models.ShortenResponse
+			defer res.Body.Close()
+			err = json.NewDecoder(res.Body).Decode(&resp)
+
+			require.NoError(t, err, tt.name)
+			assert.Contains(t, resp.Result, tt.want.body.Result, tt.name)
+		}
+
+		assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"), tt.name)
 	}
 }
