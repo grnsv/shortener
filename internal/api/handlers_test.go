@@ -59,17 +59,6 @@ func TestHandleShortenURL(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid content type",
-			req: req{
-				method:      http.MethodPost,
-				body:        "https://practicum.yandex.ru/",
-				contentType: "application/json",
-			},
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-		{
 			name: "empty body",
 			req: req{
 				method:      http.MethodPost,
@@ -239,17 +228,6 @@ func TestHandleShortenURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid content type",
-			req: req{
-				method:      http.MethodPost,
-				body:        models.ShortenRequest{URL: "https://practicum.yandex.ru/"},
-				contentType: "text/plain",
-			},
-			want: want{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-		{
 			name: "empty body",
 			req: req{
 				method:      http.MethodPost,
@@ -257,7 +235,8 @@ func TestHandleShortenURLJSON(t *testing.T) {
 				contentType: "application/json",
 			},
 			want: want{
-				statusCode: http.StatusBadRequest,
+				statusCode:  http.StatusBadRequest,
+				contentType: "application/x-gzip",
 			},
 		},
 	}

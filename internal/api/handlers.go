@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/config"
@@ -22,12 +21,6 @@ func NewURLHandler() *URLHandler {
 
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeError(w)
-		return
-	}
-
-	contentType := r.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "text/plain") {
 		writeError(w)
 		return
 	}
@@ -56,12 +49,6 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeError(w)
-		return
-	}
-
-	contentType := r.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "application/json") {
 		writeError(w)
 		return
 	}
