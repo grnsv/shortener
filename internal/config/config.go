@@ -13,9 +13,10 @@ import (
 )
 
 type Config struct {
-	AppEnv        string     `env:"APP_ENV"`
-	ServerAddress NetAddress `env:"SERVER_ADDRESS"`
-	BaseAddress   BaseURI    `env:"BASE_URL"`
+	AppEnv          string     `env:"APP_ENV"`
+	ServerAddress   NetAddress `env:"SERVER_ADDRESS"`
+	BaseAddress     BaseURI    `env:"BASE_URL"`
+	FileStoragePath string     `env:"FILE_STORAGE_PATH"`
 }
 
 type NetAddress struct {
@@ -97,6 +98,7 @@ func Get() Config {
 	}
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
+	flag.StringVar(&config.FileStoragePath, "f", "/tmp/storage", "File storage path")
 	flag.Parse()
 
 	err := env.Parse(config)

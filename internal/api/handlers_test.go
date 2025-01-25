@@ -11,12 +11,19 @@ import (
 
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/grnsv/shortener/internal/models"
+	"github.com/grnsv/shortener/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandleShortenURL(t *testing.T) {
-	ts := httptest.NewServer(Router())
+	storage, err := service.NewMemoryStorage()
+	defer func() {
+		err = storage.Close()
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+	ts := httptest.NewServer(NewRouter(service.NewURLShortener(storage)))
 	defer ts.Close()
 
 	type req struct {
@@ -93,7 +100,13 @@ func TestHandleShortenURL(t *testing.T) {
 }
 
 func TestHandleExpandURL(t *testing.T) {
-	ts := httptest.NewServer(Router())
+	storage, err := service.NewMemoryStorage()
+	defer func() {
+		err = storage.Close()
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+	ts := httptest.NewServer(NewRouter(service.NewURLShortener(storage)))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -183,7 +196,13 @@ func TestHandleExpandURL(t *testing.T) {
 }
 
 func TestHandleShortenURLJSON(t *testing.T) {
-	ts := httptest.NewServer(Router())
+	storage, err := service.NewMemoryStorage()
+	defer func() {
+		err = storage.Close()
+		require.NoError(t, err)
+	}()
+	require.NoError(t, err)
+	ts := httptest.NewServer(NewRouter(service.NewURLShortener(storage)))
 	defer ts.Close()
 
 	type req struct {

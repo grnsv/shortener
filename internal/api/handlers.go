@@ -12,11 +12,11 @@ import (
 )
 
 type URLHandler struct {
-	shortener *service.URLShortener
+	shortener service.Shortener
 }
 
-func NewURLHandler() *URLHandler {
-	return &URLHandler{shortener: service.NewURLShortener()}
+func NewURLHandler(shortener service.Shortener) *URLHandler {
+	return &URLHandler{shortener: shortener}
 }
 
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +37,10 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := h.shortener.ShortenURL(string(body))
+	shortURL, err := h.shortener.ShortenURL(string(body))
+	if err != nil {
+		writeError(w)
+	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
@@ -66,7 +69,10 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := h.shortener.ShortenURL(req.URL)
+	shortURL, err := h.shortener.ShortenURL(req.URL)
+	if err != nil {
+		writeError(w)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
