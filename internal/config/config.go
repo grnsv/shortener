@@ -13,8 +13,10 @@ import (
 )
 
 type Config struct {
-	ServerAddress NetAddress `env:"SERVER_ADDRESS"`
-	BaseAddress   BaseURI    `env:"BASE_URL"`
+	AppEnv          string     `env:"APP_ENV"`
+	ServerAddress   NetAddress `env:"SERVER_ADDRESS"`
+	BaseAddress     BaseURI    `env:"BASE_URL"`
+	FileStoragePath string     `env:"FILE_STORAGE_PATH"`
 }
 
 type NetAddress struct {
@@ -82,28 +84,6 @@ func (b *BaseURI) UnmarshalText(text []byte) error {
 	return b.Set(string(text))
 }
 
-type Option func(*Config)
-
-func WithServerAddress(addr NetAddress) Option {
-	return func(c *Config) {
-		c.ServerAddress = addr
-	}
-}
-
-func WithBaseAddress(url BaseURI) Option {
-	return func(c *Config) {
-		c.BaseAddress = url
-	}
-}
-
-func NewConfig(opts ...Option) *Config {
-	c := &Config{}
-	for _, opt := range opts {
-		opt(c)
-	}
-	return c
-}
-
 var config *Config
 
 func Get() Config {
@@ -111,12 +91,14 @@ func Get() Config {
 		return *config
 	}
 
-	config = NewConfig(
-		WithServerAddress(NetAddress{"localhost", 8080}),
-		WithBaseAddress(BaseURI{"http://", NetAddress{"localhost", 8080}}),
-	)
+	config = &Config{
+		AppEnv:        "local",
+		ServerAddress: NetAddress{"localhost", 8080},
+		BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
+	}
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
+	flag.StringVar(&config.FileStoragePath, "f", "/tmp/storage", "File storage path")
 	flag.Parse()
 
 	err := env.Parse(config)

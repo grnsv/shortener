@@ -1,0 +1,12 @@
+services:
+  shortener:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - data:/data
+    env_file:
+      - .env
+
+volumes:
+  data:
+    driver: local

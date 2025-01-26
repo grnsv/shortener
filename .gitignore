@@ -12,6 +12,8 @@
 *.out
 
 # Binaries
+cmd/client/main
+cmd/client/client
 cmd/shortener/main
 cmd/shortener/shortener
 
@@ -24,3 +26,5 @@ vendor/
 
 shortenertest
 shortenertestbeta
+
+.env
