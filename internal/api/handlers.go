@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 type URLHandler struct {
@@ -104,6 +106,22 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
+	db, err := sql.Open("pgx", config.Get().DatabaseDSN)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func writeError(w http.ResponseWriter) {

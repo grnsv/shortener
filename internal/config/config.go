@@ -17,6 +17,7 @@ type Config struct {
 	ServerAddress   NetAddress `env:"SERVER_ADDRESS"`
 	BaseAddress     BaseURI    `env:"BASE_URL"`
 	FileStoragePath string     `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string     `env:"DATABASE_DSN"`
 }
 
 type NetAddress struct {
@@ -99,6 +100,7 @@ func Get() Config {
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
 	flag.StringVar(&config.FileStoragePath, "f", "/tmp/storage", "File storage path")
+	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable")
 	flag.Parse()
 
 	err := env.Parse(config)
