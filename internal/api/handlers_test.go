@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestHandleShortenURL(t *testing.T) {
-	storage, err := service.NewMemoryStorage()
+	storage, err := service.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
@@ -100,7 +101,7 @@ func TestHandleShortenURL(t *testing.T) {
 }
 
 func TestHandleExpandURL(t *testing.T) {
-	storage, err := service.NewMemoryStorage()
+	storage, err := service.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
@@ -196,7 +197,7 @@ func TestHandleExpandURL(t *testing.T) {
 }
 
 func TestHandleShortenURLJSON(t *testing.T) {
-	storage, err := service.NewMemoryStorage()
+	storage, err := service.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)

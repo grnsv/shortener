@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,7 +9,6 @@ import (
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
-	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 type URLHandler struct {
@@ -39,7 +37,7 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := h.shortener.ShortenURL(string(body))
+	shortURL, err := h.shortener.ShortenURL(r.Context(), string(body))
 	if err != nil {
 		writeError(w)
 	}
@@ -71,7 +69,7 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := h.shortener.ShortenURL(req.URL)
+	shortURL, err := h.shortener.ShortenURL(r.Context(), req.URL)
 	if err != nil {
 		writeError(w)
 	}
@@ -98,9 +96,8 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, exists := h.shortener.ExpandURL(shortURL)
-
-	if !exists {
+	url, err := h.shortener.ExpandURL(r.Context(), shortURL)
+	if err != nil {
 		writeError(w)
 		return
 	}
@@ -109,14 +106,14 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
-	db, err := sql.Open("pgx", config.Get().DatabaseDSN)
+	db, err := service.NewDB()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(r.Context()); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

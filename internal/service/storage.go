@@ -2,8 +2,9 @@ package service
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 	"sync"
 
@@ -12,20 +13,22 @@ import (
 )
 
 type Storage interface {
-	Save(model models.URL) error
-	Get(short string) (string, bool)
+	Save(ctx context.Context, model models.URL) error
+	Get(ctx context.Context, short string) (string, error)
 	Close() error
 }
 
-func NewStorage(typ string) (Storage, error) {
-	switch typ {
-	case "memory":
-		return NewMemoryStorage()
-	case "file":
-		return NewFileStorage(config.Get().FileStoragePath)
-	default:
-		return nil, fmt.Errorf("unknown type: %s", typ)
+func NewStorage(ctx context.Context) (Storage, error) {
+	cfg := config.Get()
+	if cfg.DatabaseDSN != "" {
+		return NewDBStorage(ctx, "pgx", cfg.DatabaseDSN)
 	}
+
+	if cfg.FileStoragePath != "" {
+		return NewFileStorage(ctx, cfg.FileStoragePath)
+	}
+
+	return NewMemoryStorage(ctx)
 }
 
 type MemoryStorage struct {
@@ -33,7 +36,7 @@ type MemoryStorage struct {
 	mu   sync.RWMutex
 }
 
-func NewMemoryStorage() (*MemoryStorage, error) {
+func NewMemoryStorage(ctx context.Context) (*MemoryStorage, error) {
 	return &MemoryStorage{urls: make(map[string]string)}, nil
 }
 
@@ -41,7 +44,7 @@ func (s *MemoryStorage) Close() error {
 	return nil
 }
 
-func (s *MemoryStorage) Save(model models.URL) error {
+func (s *MemoryStorage) Save(ctx context.Context, model models.URL) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.urls[model.ShortURL] = model.OriginalURL
@@ -49,11 +52,15 @@ func (s *MemoryStorage) Save(model models.URL) error {
 	return nil
 }
 
-func (s *MemoryStorage) Get(short string) (string, bool) {
+func (s *MemoryStorage) Get(ctx context.Context, short string) (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	long, exists := s.urls[short]
-	return long, exists
+	if !exists {
+		return "", errors.New("not found")
+	}
+
+	return long, nil
 }
 
 type FileStorage struct {
@@ -62,7 +69,7 @@ type FileStorage struct {
 	memory MemoryStorage
 }
 
-func NewFileStorage(filename string) (*FileStorage, error) {
+func NewFileStorage(ctx context.Context, filename string) (*FileStorage, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, err
@@ -89,7 +96,7 @@ func (s *FileStorage) Close() error {
 	return s.file.Close()
 }
 
-func (s *FileStorage) Save(model models.URL) error {
+func (s *FileStorage) Save(ctx context.Context, model models.URL) error {
 	if err := json.NewEncoder(s.writer).Encode(model); err != nil {
 		return err
 	}
@@ -98,9 +105,75 @@ func (s *FileStorage) Save(model models.URL) error {
 		return err
 	}
 
-	return s.memory.Save(model)
+	return s.memory.Save(ctx, model)
 }
 
-func (s *FileStorage) Get(short string) (string, bool) {
-	return s.memory.Get(short)
+func (s *FileStorage) Get(ctx context.Context, short string) (string, error) {
+	return s.memory.Get(ctx, short)
+}
+
+type DBStorage struct {
+	db DB
+}
+
+func NewDBStorage(ctx context.Context, driverName, dataSourceName string) (*DBStorage, error) {
+	db, err := NewDB()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = initDB(ctx, db); err != nil {
+		return nil, err
+	}
+
+	return &DBStorage{db: db}, nil
+}
+
+func initDB(ctx context.Context, db DB) error {
+	_, err := db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS urls (
+			id uuid NOT NULL,
+			short_url text NOT NULL,
+			original_url text NOT NULL,
+			CONSTRAINT urls_pk PRIMARY KEY (id),
+			CONSTRAINT urls_short_url_unique UNIQUE (short_url)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DBStorage) Close() error {
+	return s.db.Close()
+}
+
+func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO urls (id, short_url, original_url)
+		VALUES ($1::uuid, $2, $3)
+		ON CONFLICT DO NOTHING
+	`, model.UUID, model.ShortURL, model.OriginalURL)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
+	var long string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT original_url
+		FROM urls
+		WHERE short_url = $1
+		LIMIT 1
+	`, short).Scan(&long)
+	if err != nil {
+		return "", err
+	}
+
+	return long, nil
 }
