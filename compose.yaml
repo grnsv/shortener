@@ -2,10 +2,15 @@ services:
   shortener:
     build: .
     restart: unless-stopped
+    ports:
+      - '${EXTERNAL_PORT:-8080}:${INTERNAL_PORT:-8080}'
     volumes:
       - data:/data
     env_file:
       - .env
+    environment:
+      SERVER_ADDRESS: '0.0.0.0:${INTERNAL_PORT:-8080}'
+      FILE_STORAGE_PATH: /data/storage
 
 volumes:
   data:

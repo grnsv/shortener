@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/base64"
 
 	"github.com/google/uuid"
@@ -10,8 +11,8 @@ import (
 const shortURLLength = 8
 
 type Shortener interface {
-	ShortenURL(url string) (string, error)
-	ExpandURL(shortURL string) (string, bool)
+	ShortenURL(ctx context.Context, url string) (string, error)
+	ExpandURL(ctx context.Context, shortURL string) (string, error)
 }
 
 type URLShortener struct {
@@ -31,9 +32,9 @@ func (s *URLShortener) generateShortURL(url string) models.URL {
 	}
 }
 
-func (s *URLShortener) ShortenURL(url string) (string, error) {
+func (s *URLShortener) ShortenURL(ctx context.Context, url string) (string, error) {
 	model := s.generateShortURL(url)
-	err := s.storage.Save(model)
+	err := s.storage.Save(ctx, model)
 	if err != nil {
 		return "", err
 	}
@@ -41,6 +42,6 @@ func (s *URLShortener) ShortenURL(url string) (string, error) {
 	return model.ShortURL, nil
 }
 
-func (s *URLShortener) ExpandURL(shortURL string) (string, bool) {
-	return s.storage.Get(shortURL)
+func (s *URLShortener) ExpandURL(ctx context.Context, shortURL string) (string, error) {
+	return s.storage.Get(ctx, shortURL)
 }

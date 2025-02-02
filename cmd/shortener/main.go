@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/grnsv/shortener/internal/api"
@@ -10,18 +11,18 @@ import (
 )
 
 func main() {
-	logger.Initialize(config.Get().AppEnv)
+	cfg := config.Get()
+	logger.Initialize(cfg.AppEnv)
 	defer logger.Log.Sync()
 
-	storage, err := service.NewStorage("file")
+	storage, err := service.NewStorage(context.Background())
 	if err != nil {
 		fatal(err)
 	}
 	defer storage.Close()
 
 	r := api.NewRouter(service.NewURLShortener(storage))
-
-	if err := http.ListenAndServe(config.Get().ServerAddress.String(), r); err != nil {
+	if err := http.ListenAndServe(cfg.ServerAddress.String(), r); err != nil {
 		fatal(err)
 	}
 }
