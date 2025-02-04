@@ -85,14 +85,36 @@ func (b *BaseURI) UnmarshalText(text []byte) error {
 	return b.Set(string(text))
 }
 
-var config *Config
+type Option func(*Config)
 
-func Get() Config {
-	if config != nil {
-		return *config
+func WithAppEnv(appEnv string) Option {
+	return func(c *Config) {
+		c.AppEnv = appEnv
 	}
+}
 
-	config = &Config{
+func WithServerAddress(addr NetAddress) Option {
+	return func(c *Config) {
+		c.ServerAddress = addr
+	}
+}
+
+func WithBaseAddress(url BaseURI) Option {
+	return func(c *Config) {
+		c.BaseAddress = url
+	}
+}
+
+func New(opts ...Option) *Config {
+	c := &Config{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+func Parse() *Config {
+	config := &Config{
 		AppEnv:        "local",
 		ServerAddress: NetAddress{"localhost", 8080},
 		BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
@@ -108,5 +130,5 @@ func Get() Config {
 		log.Fatalf("Failed to parse env: %v", err)
 	}
 
-	return *config
+	return config
 }

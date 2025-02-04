@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/grnsv/shortener/internal/api"
@@ -11,22 +12,27 @@ import (
 )
 
 func main() {
-	cfg := config.Get()
-	logger.Initialize(cfg.AppEnv)
-	defer logger.Log.Sync()
+	cfg := config.Parse()
+	log, err := logger.New(cfg.AppEnv)
+	if err != nil {
+		fatal(err)
+	}
+	defer log.Sync()
 
-	storage, err := service.NewStorage(context.Background())
+	storage, err := service.NewStorage(context.Background(), cfg)
 	if err != nil {
 		fatal(err)
 	}
 	defer storage.Close()
 
-	r := api.NewRouter(service.NewURLShortener(storage))
+	shortener := service.NewURLShortener(storage)
+	handler := api.NewURLHandler(shortener, cfg, log)
+	r := api.NewRouter(handler, log)
 	if err := http.ListenAndServe(cfg.ServerAddress.String(), r); err != nil {
 		fatal(err)
 	}
 }
 
 func fatal(err error) {
-	logger.Log.Fatalf("Server failed: %v", err)
+	log.Fatalf("Server failed: %v", err)
 }

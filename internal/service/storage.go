@@ -15,13 +15,13 @@ import (
 type Storage interface {
 	Save(ctx context.Context, model models.URL) error
 	Get(ctx context.Context, short string) (string, error)
+	Ping(ctx context.Context) error
 	Close() error
 }
 
-func NewStorage(ctx context.Context) (Storage, error) {
-	cfg := config.Get()
+func NewStorage(ctx context.Context, cfg *config.Config) (Storage, error) {
 	if cfg.DatabaseDSN != "" {
-		return NewDBStorage(ctx, "pgx", cfg.DatabaseDSN)
+		return NewDBStorage(ctx, cfg.DatabaseDSN)
 	}
 
 	if cfg.FileStoragePath != "" {
@@ -61,6 +61,10 @@ func (s *MemoryStorage) Get(ctx context.Context, short string) (string, error) {
 	}
 
 	return long, nil
+}
+
+func (s *MemoryStorage) Ping(ctx context.Context) error {
+	return nil
 }
 
 type FileStorage struct {
@@ -112,12 +116,16 @@ func (s *FileStorage) Get(ctx context.Context, short string) (string, error) {
 	return s.memory.Get(ctx, short)
 }
 
+func (s *FileStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
 type DBStorage struct {
 	db DB
 }
 
-func NewDBStorage(ctx context.Context, driverName, dataSourceName string) (*DBStorage, error) {
-	db, err := NewDB()
+func NewDBStorage(ctx context.Context, dataSourceName string) (*DBStorage, error) {
+	db, err := NewDB(dataSourceName)
 	if err != nil {
 		return nil, err
 	}
@@ -176,4 +184,8 @@ func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
 	}
 
 	return long, nil
+}
+
+func (s *DBStorage) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }

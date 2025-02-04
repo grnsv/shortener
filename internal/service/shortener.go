@@ -13,6 +13,7 @@ const shortURLLength = 8
 type Shortener interface {
 	ShortenURL(ctx context.Context, url string) (string, error)
 	ExpandURL(ctx context.Context, shortURL string) (string, error)
+	PingStorage(ctx context.Context) error
 }
 
 type URLShortener struct {
@@ -44,4 +45,8 @@ func (s *URLShortener) ShortenURL(ctx context.Context, url string) (string, erro
 
 func (s *URLShortener) ExpandURL(ctx context.Context, shortURL string) (string, error) {
 	return s.storage.Get(ctx, shortURL)
+}
+
+func (s *URLShortener) PingStorage(ctx context.Context) error {
+	return s.storage.Ping(ctx)
 }

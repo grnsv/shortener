@@ -78,7 +78,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
-func WithCompressing(h http.HandlerFunc) http.HandlerFunc {
+func WithCompressing(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
@@ -98,6 +98,6 @@ func WithCompressing(h http.HandlerFunc) http.HandlerFunc {
 			defer cw.Close()
 		}
 
-		h.ServeHTTP(ow, r)
+		next.ServeHTTP(ow, r)
 	})
 }

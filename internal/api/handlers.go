@@ -7,16 +7,23 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/config"
+	"github.com/grnsv/shortener/internal/logger"
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
 )
 
 type URLHandler struct {
 	shortener service.Shortener
+	config    *config.Config
+	logger    logger.Logger
 }
 
-func NewURLHandler(shortener service.Shortener) *URLHandler {
-	return &URLHandler{shortener: shortener}
+func NewURLHandler(shortener service.Shortener, config *config.Config, logger logger.Logger) *URLHandler {
+	return &URLHandler{
+		shortener: shortener,
+		config:    config,
+		logger:    logger,
+	}
 }
 
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +51,7 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(config.Get().BaseAddress.String() + "/" + shortURL))
+	_, err = w.Write([]byte(h.config.BaseAddress.String() + "/" + shortURL))
 	if err != nil {
 		writeError(w)
 	}
@@ -77,7 +84,7 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(models.ShortenResponse{
-		Result: config.Get().BaseAddress.String() + "/" + shortURL,
+		Result: h.config.BaseAddress.String() + "/" + shortURL,
 	})
 	if err != nil {
 		writeError(w)
@@ -106,14 +113,7 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
-	db, err := service.NewDB()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
-
-	if err := db.PingContext(r.Context()); err != nil {
+	if err := h.shortener.PingStorage(r.Context()); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
