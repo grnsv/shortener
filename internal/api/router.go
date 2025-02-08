@@ -18,6 +18,7 @@ func NewRouter(h *URLHandler, logger logger.Logger) chi.Router {
 
 	r.Post("/", h.ShortenURL)
 	r.Post("/api/shorten", h.ShortenURLJSON)
+	r.Post("/api/shorten/batch", h.ShortenBatch)
 	r.Get("/{id}", h.ExpandURL)
 	r.Get("/ping", h.PingDB)
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {

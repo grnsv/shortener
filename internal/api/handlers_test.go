@@ -14,12 +14,13 @@ import (
 	"github.com/grnsv/shortener/internal/logger"
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
+	"github.com/grnsv/shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandleShortenURL(t *testing.T) {
-	storage, err := service.NewMemoryStorage(context.Background())
+	storage, err := storage.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
@@ -111,7 +112,7 @@ func TestHandleShortenURL(t *testing.T) {
 }
 
 func TestHandleExpandURL(t *testing.T) {
-	storage, err := service.NewMemoryStorage(context.Background())
+	storage, err := storage.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
@@ -216,7 +217,7 @@ func TestHandleExpandURL(t *testing.T) {
 }
 
 func TestHandleShortenURLJSON(t *testing.T) {
-	storage, err := service.NewMemoryStorage(context.Background())
+	storage, err := storage.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)

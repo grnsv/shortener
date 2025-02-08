@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	models "github.com/grnsv/shortener/internal/models"
 )
 
 // MockShortener is a mock of Shortener interface.
@@ -61,6 +62,21 @@ func (m *MockShortener) PingStorage(arg0 context.Context) error {
 func (mr *MockShortenerMockRecorder) PingStorage(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingStorage", reflect.TypeOf((*MockShortener)(nil).PingStorage), arg0)
+}
+
+// ShortenBatch mocks base method.
+func (m *MockShortener) ShortenBatch(arg0 context.Context, arg1 models.BatchRequest, arg2 string) (models.BatchResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShortenBatch", arg0, arg1, arg2)
+	ret0, _ := ret[0].(models.BatchResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ShortenBatch indicates an expected call of ShortenBatch.
+func (mr *MockShortenerMockRecorder) ShortenBatch(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShortenBatch", reflect.TypeOf((*MockShortener)(nil).ShortenBatch), arg0, arg1, arg2)
 }
 
 // ShortenURL mocks base method.

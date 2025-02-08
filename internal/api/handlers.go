@@ -27,11 +27,6 @@ func NewURLHandler(shortener service.Shortener, config *config.Config, logger lo
 }
 
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w)
-		return
-	}
-
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -58,11 +53,6 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w)
-		return
-	}
-
 	var req models.ShortenRequest
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -91,12 +81,34 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
+	var req models.BatchRequest
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
 		writeError(w)
 		return
 	}
 
+	if len(req) == 0 {
+		writeError(w)
+		return
+	}
+
+	resp, err := h.shortener.ShortenBatch(r.Context(), req, h.config.BaseAddress.String()+"/")
+	if err != nil {
+		writeError(w)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(resp)
+	if err != nil {
+		writeError(w)
+	}
+}
+
+func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "id")
 	if shortURL == "" {
 		writeError(w)

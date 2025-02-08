@@ -9,6 +9,7 @@ import (
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/grnsv/shortener/internal/logger"
 	"github.com/grnsv/shortener/internal/service"
+	"github.com/grnsv/shortener/internal/storage"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	}
 	defer log.Sync()
 
-	storage, err := service.NewStorage(context.Background(), cfg)
+	storage, err := storage.New(context.Background(), cfg)
 	if err != nil {
 		fatal(err)
 	}
