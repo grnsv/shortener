@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/grnsv/shortener/internal/models"
@@ -39,6 +40,10 @@ func (s *URLShortener) ShortenURL(ctx context.Context, url string) (string, erro
 	model := s.generateShortURL(url)
 	err := s.storage.Save(ctx, model)
 	if err != nil {
+		if errors.Is(err, storage.ErrAlreadyExist) {
+			return model.ShortURL, err
+		}
+
 		return "", err
 	}
 

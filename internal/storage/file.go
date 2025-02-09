@@ -16,7 +16,7 @@ type File interface {
 type FileStorage struct {
 	file   File
 	writer *bufio.Writer
-	memory MemoryStorage
+	memory *MemoryStorage
 }
 
 func NewFileStorage(ctx context.Context, file File) (*FileStorage, error) {
@@ -33,7 +33,7 @@ func NewFileStorage(ctx context.Context, file File) (*FileStorage, error) {
 	return &FileStorage{
 		file:   file,
 		writer: bufio.NewWriter(file),
-		memory: MemoryStorage{urls: urls},
+		memory: &MemoryStorage{urls: urls},
 	}, nil
 }
 

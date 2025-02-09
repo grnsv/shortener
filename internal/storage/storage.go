@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/grnsv/shortener/internal/config"
@@ -9,6 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
+
+var ErrAlreadyExist = errors.New("already exist")
 
 type Storage interface {
 	Save(ctx context.Context, model models.URL) error

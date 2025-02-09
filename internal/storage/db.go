@@ -50,13 +50,22 @@ func (s *DBStorage) Close() error {
 }
 
 func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
-	_, err := s.db.ExecContext(ctx, `
+	result, err := s.db.ExecContext(ctx, `
 		INSERT INTO urls (id, short_url, original_url)
 		VALUES ($1::uuid, $2, $3)
 		ON CONFLICT DO NOTHING
 	`, model.UUID, model.ShortURL, model.OriginalURL)
 	if err != nil {
 		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrAlreadyExist
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/grnsv/shortener/internal/logger"
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
+	"github.com/grnsv/shortener/internal/storage"
 )
 
 type URLHandler struct {
@@ -39,13 +41,19 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/plain")
+
 	shortURL, err := h.shortener.ShortenURL(r.Context(), string(body))
 	if err != nil {
-		writeError(w)
+		if errors.Is(err, storage.ErrAlreadyExist) {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			writeError(w)
+		}
+	} else {
+		w.WriteHeader(http.StatusCreated)
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte(h.config.BaseAddress.String() + "/" + shortURL))
 	if err != nil {
 		writeError(w)
@@ -66,13 +74,19 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+
 	shortURL, err := h.shortener.ShortenURL(r.Context(), req.URL)
 	if err != nil {
-		writeError(w)
+		if errors.Is(err, storage.ErrAlreadyExist) {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			writeError(w)
+		}
+	} else {
+		w.WriteHeader(http.StatusCreated)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(models.ShortenResponse{
 		Result: h.config.BaseAddress.String() + "/" + shortURL,
 	})
