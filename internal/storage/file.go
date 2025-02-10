@@ -20,11 +20,14 @@ func NewFileStorage(ctx context.Context, file File) (*FileStorage, error) {
 		return nil, err
 	}
 
-	return &FileStorage{
+	writer := bufio.NewWriter(file)
+	storage := &FileStorage{
 		file:   file,
-		writer: bufio.NewWriter(file),
+		writer: writer,
 		memory: &MemoryStorage{urls: urls},
-	}, nil
+	}
+	defer writer.Flush()
+	return storage, nil
 }
 
 func loadFromFile(file File) (map[string]string, error) {
