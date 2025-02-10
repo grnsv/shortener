@@ -15,45 +15,51 @@ type FileStorage struct {
 }
 
 func NewFileStorage(ctx context.Context, file File) (*FileStorage, error) {
-	urls, err := loadFromFile(file)
+	writer := bufio.NewWriter(file)
+	memory, err := NewMemoryStorage(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	writer := bufio.NewWriter(file)
 	storage := &FileStorage{
 		file:   file,
 		writer: writer,
-		memory: &MemoryStorage{urls: urls},
+		memory: memory,
 	}
-	defer writer.Flush()
+	if err = storage.loadFromFile(ctx); err != nil {
+		return nil, err
+	}
+
 	return storage, nil
 }
 
-func loadFromFile(file File) (map[string]string, error) {
-	urls := make(map[string]string)
-	scanner := bufio.NewScanner(file)
+func (s *FileStorage) loadFromFile(ctx context.Context) error {
+	var err error
+	scanner := bufio.NewScanner(s.file)
 	for scanner.Scan() {
 		model := &models.URL{}
-		if err := json.Unmarshal(scanner.Bytes(), model); err != nil {
-			return nil, err
+		if err = json.Unmarshal(scanner.Bytes(), model); err != nil {
+			return err
 		}
-		urls[model.ShortURL] = model.OriginalURL
+
+		if err = s.memory.Save(ctx, *model); err != nil {
+			return err
+		}
 	}
 
-	return urls, nil
+	return nil
 }
 
 func (s *FileStorage) Close() error {
+	if err := s.memory.Close(); err != nil {
+		return err
+	}
 	return s.file.Close()
 }
 
 func (s *FileStorage) Save(ctx context.Context, model models.URL) error {
+	defer s.writer.Flush()
 	if err := json.NewEncoder(s.writer).Encode(model); err != nil {
-		return err
-	}
-
-	if err := s.writer.Flush(); err != nil {
 		return err
 	}
 
@@ -61,14 +67,11 @@ func (s *FileStorage) Save(ctx context.Context, model models.URL) error {
 }
 
 func (s *FileStorage) SaveMany(ctx context.Context, models []models.URL) error {
+	defer s.writer.Flush()
 	for _, model := range models {
 		if err := json.NewEncoder(s.writer).Encode(model); err != nil {
 			return err
 		}
-	}
-
-	if err := s.writer.Flush(); err != nil {
-		return err
 	}
 
 	return s.memory.SaveMany(ctx, models)

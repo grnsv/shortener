@@ -9,12 +9,11 @@ import (
 )
 
 type MemoryStorage struct {
-	urls map[string]string
-	mu   sync.RWMutex
+	urls sync.Map
 }
 
 func NewMemoryStorage(ctx context.Context) (*MemoryStorage, error) {
-	return &MemoryStorage{urls: make(map[string]string)}, nil
+	return &MemoryStorage{}, nil
 }
 
 func (s *MemoryStorage) Close() error {
@@ -22,32 +21,23 @@ func (s *MemoryStorage) Close() error {
 }
 
 func (s *MemoryStorage) Save(ctx context.Context, model models.URL) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.urls[model.ShortURL] = model.OriginalURL
-
+	s.urls.Store(model.ShortURL, model.OriginalURL)
 	return nil
 }
 
 func (s *MemoryStorage) SaveMany(ctx context.Context, models []models.URL) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	for _, model := range models {
-		s.urls[model.ShortURL] = model.OriginalURL
+		s.urls.Store(model.ShortURL, model.OriginalURL)
 	}
-
 	return nil
 }
 
 func (s *MemoryStorage) Get(ctx context.Context, short string) (string, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	long, exists := s.urls[short]
-	if !exists {
+	value, ok := s.urls.Load(short)
+	if !ok {
 		return "", errors.New("not found")
 	}
-
-	return long, nil
+	return value.(string), nil
 }
 
 func (s *MemoryStorage) Ping(ctx context.Context) error {
