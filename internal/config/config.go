@@ -106,23 +106,25 @@ func WithBaseAddress(url BaseURI) Option {
 }
 
 func New(opts ...Option) *Config {
-	c := &Config{}
 	for _, opt := range opts {
-		opt(c)
+		opt(config)
 	}
-	return c
+	return config
+}
+
+var config = &Config{
+	AppEnv:          "local",
+	ServerAddress:   NetAddress{"localhost", 8080},
+	BaseAddress:     BaseURI{"http://", NetAddress{"localhost", 8080}},
+	FileStoragePath: "",
+	DatabaseDSN:     "",
 }
 
 func Parse() *Config {
-	config := &Config{
-		AppEnv:        "local",
-		ServerAddress: NetAddress{"localhost", 8080},
-		BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
-	}
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
-	flag.StringVar(&config.FileStoragePath, "f", "", "File storage path (/data/storage)")
-	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable")
+	flag.StringVar(&config.FileStoragePath, "f", config.FileStoragePath, "File storage path (/data/storage)")
+	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable")
 	flag.Parse()
 
 	err := env.Parse(config)
