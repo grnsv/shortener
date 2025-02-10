@@ -4,14 +4,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"io"
 
 	"github.com/grnsv/shortener/internal/models"
 )
-
-type File interface {
-	io.ReadWriteCloser
-}
 
 type FileStorage struct {
 	file   File

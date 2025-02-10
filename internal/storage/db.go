@@ -2,24 +2,10 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/jmoiron/sqlx"
 )
-
-type DB interface {
-	sqlx.ExtContext
-	PingContext(ctx context.Context) error
-	NamedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error)
-	PreparexContext(ctx context.Context, query string) (Stmt, error)
-	Close() error
-}
-
-type Stmt interface {
-	ExecContext(ctx context.Context, args ...any) (sql.Result, error)
-	Close() error
-}
 
 type DBWrapper struct {
 	*sqlx.DB
