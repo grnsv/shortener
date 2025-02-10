@@ -12,15 +12,39 @@ type DB interface {
 	sqlx.ExtContext
 	PingContext(ctx context.Context) error
 	NamedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error)
+	PreparexContext(ctx context.Context, query string) (Stmt, error)
 	Close() error
 }
 
+type Stmt interface {
+	ExecContext(ctx context.Context, args ...any) (sql.Result, error)
+	Close() error
+}
+
+type DBWrapper struct {
+	*sqlx.DB
+}
+
+func (db *DBWrapper) PreparexContext(ctx context.Context, query string) (Stmt, error) {
+	stmt, err := db.DB.PreparexContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StmtWrapper{stmt}, nil
+}
+
+type StmtWrapper struct {
+	*sqlx.Stmt
+}
+
 type DBStorage struct {
-	db DB
+	db       DB
+	saveStmt Stmt
 }
 
 func NewDBStorage(ctx context.Context, db DB) (*DBStorage, error) {
-	storage := &DBStorage{db}
+	storage := &DBStorage{db: db}
 	if err := storage.initDB(ctx); err != nil {
 		return nil, err
 	}
@@ -42,19 +66,31 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 		return err
 	}
 
+	s.saveStmt, err = s.db.PreparexContext(ctx, `
+        INSERT INTO urls (id, short_url, original_url)
+        VALUES ($1::uuid, $2, $3)
+        ON CONFLICT DO NOTHING
+    `)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *DBStorage) Close() error {
-	return s.db.Close()
+	var err error
+	if err = s.saveStmt.Close(); err != nil {
+		return err
+	}
+	if err = s.db.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
-	result, err := s.db.ExecContext(ctx, `
-		INSERT INTO urls (id, short_url, original_url)
-		VALUES ($1::uuid, $2, $3)
-		ON CONFLICT DO NOTHING
-	`, model.UUID, model.ShortURL, model.OriginalURL)
+	result, err := s.saveStmt.ExecContext(ctx, model.UUID, model.ShortURL, model.OriginalURL)
 	if err != nil {
 		return err
 	}

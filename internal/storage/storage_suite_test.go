@@ -22,11 +22,19 @@ var _ = Describe("DBStorage_SaveMany", func() {
 	var (
 		ctrl *gomock.Controller
 		db   *mocks.MockDB
+		stmt *mocks.MockStmt
+		s    storage.Storage
+		err  error
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		db = mocks.NewMockDB(ctrl)
+		stmt = mocks.NewMockStmt(ctrl)
+		db.EXPECT().ExecContext(gomock.Any(), gomock.Any()).Return(nil, nil)
+		db.EXPECT().PreparexContext(gomock.Any(), gomock.Any()).Return(stmt, nil)
+		s, err = storage.NewDBStorage(context.Background(), db)
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
@@ -47,11 +55,7 @@ var _ = Describe("DBStorage_SaveMany", func() {
 			},
 		}
 
-		db.EXPECT().ExecContext(gomock.Any(), gomock.Any()).Return(nil, nil)
-		s, err := storage.NewDBStorage(context.Background(), db)
-		Expect(err).To(BeNil())
 		db.EXPECT().NamedExecContext(gomock.Any(), gomock.Any(), gomock.Len(2)).Return(nil, nil)
-
 		err = s.SaveMany(context.Background(), models)
 		Expect(err).To(BeNil())
 	})
@@ -71,13 +75,9 @@ var _ = Describe("DBStorage_SaveMany", func() {
 				},
 			}
 
-			db.EXPECT().ExecContext(gomock.Any(), gomock.Any()).Return(nil, nil)
-			s, err := storage.NewDBStorage(context.Background(), db)
-			Expect(err).To(BeNil())
 			db.EXPECT().
 				NamedExecContext(gomock.Any(), gomock.Any(), gomock.Len(2)).
 				Return(nil, errors.New("db error"))
-
 			err = s.SaveMany(context.Background(), models)
 			Expect(err).To(HaveOccurred())
 		})

@@ -28,7 +28,7 @@ func New(ctx context.Context, cfg *config.Config) (Storage, error) {
 			return nil, err
 		}
 
-		return NewDBStorage(ctx, db)
+		return NewDBStorage(ctx, &DBWrapper{db})
 	}
 
 	if cfg.FileStoragePath != "" {
