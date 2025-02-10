@@ -15,6 +15,19 @@ type FileStorage struct {
 }
 
 func NewFileStorage(ctx context.Context, file File) (*FileStorage, error) {
+	urls, err := loadFromFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FileStorage{
+		file:   file,
+		writer: bufio.NewWriter(file),
+		memory: &MemoryStorage{urls: urls},
+	}, nil
+}
+
+func loadFromFile(file File) (map[string]string, error) {
 	urls := make(map[string]string)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -25,11 +38,7 @@ func NewFileStorage(ctx context.Context, file File) (*FileStorage, error) {
 		urls[model.ShortURL] = model.OriginalURL
 	}
 
-	return &FileStorage{
-		file:   file,
-		writer: bufio.NewWriter(file),
-		memory: &MemoryStorage{urls: urls},
-	}, nil
+	return urls, nil
 }
 
 func (s *FileStorage) Close() error {
