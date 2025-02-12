@@ -1,0 +1,28 @@
+services:
+  shortener:
+    environment:
+      DATABASE_DSN: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_DATABASE}?sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17.2-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: '${DB_PASSWORD}'
+      POSTGRES_DB: '${DB_DATABASE}'
+      POSTGRES_USER: '${DB_USERNAME}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD}'
+    ports:
+      - '${FORWARD_DB_PORT:-5432}:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${DB_DATABASE}", "-U", "${DB_USERNAME}" ]
+      retries: 3
+      timeout: 5s
+
+volumes:
+  db-data:
+    driver: local

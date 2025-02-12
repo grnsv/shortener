@@ -17,6 +17,7 @@ type Config struct {
 	ServerAddress   NetAddress `env:"SERVER_ADDRESS"`
 	BaseAddress     BaseURI    `env:"BASE_URL"`
 	FileStoragePath string     `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string     `env:"DATABASE_DSN"`
 }
 
 type NetAddress struct {
@@ -84,21 +85,46 @@ func (b *BaseURI) UnmarshalText(text []byte) error {
 	return b.Set(string(text))
 }
 
-var config *Config
+type Option func(*Config)
 
-func Get() Config {
-	if config != nil {
-		return *config
+func WithAppEnv(appEnv string) Option {
+	return func(c *Config) {
+		c.AppEnv = appEnv
 	}
+}
 
-	config = &Config{
-		AppEnv:        "local",
-		ServerAddress: NetAddress{"localhost", 8080},
-		BaseAddress:   BaseURI{"http://", NetAddress{"localhost", 8080}},
+func WithServerAddress(addr NetAddress) Option {
+	return func(c *Config) {
+		c.ServerAddress = addr
 	}
+}
+
+func WithBaseAddress(url BaseURI) Option {
+	return func(c *Config) {
+		c.BaseAddress = url
+	}
+}
+
+func New(opts ...Option) *Config {
+	for _, opt := range opts {
+		opt(config)
+	}
+	return config
+}
+
+var config = &Config{
+	AppEnv:          "local",
+	ServerAddress:   NetAddress{"localhost", 8080},
+	BaseAddress:     BaseURI{"http://", NetAddress{"localhost", 8080}},
+	FileStoragePath: "",
+	DatabaseDSN:     "",
+}
+
+func Parse() *Config {
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
-	flag.StringVar(&config.FileStoragePath, "f", "/tmp/storage", "File storage path")
+	flag.StringVar(&config.FileStoragePath, "f", config.FileStoragePath, "File storage path (/data/storage)")
+	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable")
 	flag.Parse()
 
 	err := env.Parse(config)
@@ -106,5 +132,5 @@ func Get() Config {
 		log.Fatalf("Failed to parse env: %v", err)
 	}
 
-	return *config
+	return config
 }

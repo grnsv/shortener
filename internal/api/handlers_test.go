@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,20 +11,31 @@ import (
 	"testing"
 
 	"github.com/grnsv/shortener/internal/config"
+	"github.com/grnsv/shortener/internal/logger"
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/grnsv/shortener/internal/service"
+	"github.com/grnsv/shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHandleShortenURL(t *testing.T) {
-	storage, err := service.NewMemoryStorage()
+	storage, err := storage.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
-	ts := httptest.NewServer(NewRouter(service.NewURLShortener(storage)))
+	shortener := service.NewURLShortener(storage)
+	cfg := config.New(
+		config.WithAppEnv("testing"),
+		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
+		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
+	)
+	log, err := logger.New("testing")
+	require.NoError(t, err)
+	handler := NewURLHandler(shortener, cfg, log)
+	ts := httptest.NewServer(NewRouter(handler, log))
 	defer ts.Close()
 
 	type req struct {
@@ -100,13 +112,22 @@ func TestHandleShortenURL(t *testing.T) {
 }
 
 func TestHandleExpandURL(t *testing.T) {
-	storage, err := service.NewMemoryStorage()
+	storage, err := storage.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
-	ts := httptest.NewServer(NewRouter(service.NewURLShortener(storage)))
+	shortener := service.NewURLShortener(storage)
+	cfg := config.New(
+		config.WithAppEnv("testing"),
+		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
+		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
+	)
+	log, err := logger.New("testing")
+	require.NoError(t, err)
+	handler := NewURLHandler(shortener, cfg, log)
+	ts := httptest.NewServer(NewRouter(handler, log))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -125,7 +146,7 @@ func TestHandleExpandURL(t *testing.T) {
 	defer res.Body.Close()
 	resBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	shorten := strings.Split(string(resBody), config.Get().BaseAddress.String())[1]
+	shorten := strings.Split(string(resBody), cfg.BaseAddress.String())[1]
 
 	type req struct {
 		method string
@@ -196,13 +217,22 @@ func TestHandleExpandURL(t *testing.T) {
 }
 
 func TestHandleShortenURLJSON(t *testing.T) {
-	storage, err := service.NewMemoryStorage()
+	storage, err := storage.NewMemoryStorage(context.Background())
 	defer func() {
 		err = storage.Close()
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
-	ts := httptest.NewServer(NewRouter(service.NewURLShortener(storage)))
+	shortener := service.NewURLShortener(storage)
+	cfg := config.New(
+		config.WithAppEnv("testing"),
+		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
+		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
+	)
+	log, err := logger.New("testing")
+	require.NoError(t, err)
+	handler := NewURLHandler(shortener, cfg, log)
+	ts := httptest.NewServer(NewRouter(handler, log))
 	defer ts.Close()
 
 	type req struct {
@@ -243,7 +273,8 @@ func TestHandleShortenURLJSON(t *testing.T) {
 				contentType: "application/json",
 			},
 			want: want{
-				statusCode: http.StatusBadRequest,
+				statusCode:  http.StatusBadRequest,
+				contentType: "application/x-gzip",
 			},
 		},
 		{

@@ -1,0 +1,125 @@
+package storage
+
+import (
+	"context"
+
+	"github.com/grnsv/shortener/internal/models"
+	"github.com/jmoiron/sqlx"
+)
+
+type DBWrapper struct {
+	*sqlx.DB
+}
+
+func (db *DBWrapper) PreparexContext(ctx context.Context, query string) (Stmt, error) {
+	stmt, err := db.DB.PreparexContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StmtWrapper{stmt}, nil
+}
+
+type StmtWrapper struct {
+	*sqlx.Stmt
+}
+
+type DBStorage struct {
+	db       DB
+	saveStmt Stmt
+}
+
+func NewDBStorage(ctx context.Context, db DB) (*DBStorage, error) {
+	storage := &DBStorage{db: db}
+	if err := storage.initDB(ctx); err != nil {
+		return nil, err
+	}
+
+	return storage, nil
+}
+
+func (s *DBStorage) initDB(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS urls (
+			id uuid NOT NULL,
+			short_url text NOT NULL,
+			original_url text NOT NULL,
+			CONSTRAINT urls_pk PRIMARY KEY (id),
+			CONSTRAINT urls_short_url_unique UNIQUE (short_url)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.saveStmt, err = s.db.PreparexContext(ctx, `
+        INSERT INTO urls (id, short_url, original_url)
+        VALUES ($1::uuid, $2, $3)
+        ON CONFLICT DO NOTHING
+    `)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DBStorage) Close() error {
+	var err error
+	if err = s.saveStmt.Close(); err != nil {
+		return err
+	}
+	if err = s.db.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
+	result, err := s.saveStmt.ExecContext(ctx, model.UUID, model.ShortURL, model.OriginalURL)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrAlreadyExist
+	}
+
+	return nil
+}
+
+func (s *DBStorage) SaveMany(ctx context.Context, models []models.URL) error {
+	_, err := s.db.NamedExecContext(ctx, `
+		INSERT INTO urls (id, short_url, original_url)
+        VALUES (:id, :short_url, :original_url)
+	`, models)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
+	var long string
+	err := s.db.QueryRowxContext(ctx, `
+		SELECT original_url
+		FROM urls
+		WHERE short_url = $1
+		LIMIT 1
+	`, short).Scan(&long)
+	if err != nil {
+		return "", err
+	}
+
+	return long, nil
+}
+
+func (s *DBStorage) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
+}
