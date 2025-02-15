@@ -67,6 +67,21 @@ func (mr *MockStorageMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockStorage)(nil).Get), arg0, arg1)
 }
 
+// GetAll mocks base method.
+func (m *MockStorage) GetAll(arg0 context.Context, arg1 string) ([]models.URL, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret0, _ := ret[0].([]models.URL)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockStorageMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockStorage)(nil).GetAll), arg0, arg1)
+}
+
 // Ping mocks base method.
 func (m *MockStorage) Ping(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -368,6 +383,83 @@ func (mr *MockStmtMockRecorder) ExecContext(arg0 interface{}, arg1 ...interface{
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecContext", reflect.TypeOf((*MockStmt)(nil).ExecContext), varargs...)
+}
+
+// GetContext mocks base method.
+func (m *MockStmt) GetContext(arg0 context.Context, arg1 interface{}, arg2 ...interface{}) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetContext", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// GetContext indicates an expected call of GetContext.
+func (mr *MockStmtMockRecorder) GetContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContext", reflect.TypeOf((*MockStmt)(nil).GetContext), varargs...)
+}
+
+// QueryRowxContext mocks base method.
+func (m *MockStmt) QueryRowxContext(arg0 context.Context, arg1 ...interface{}) *sqlx.Row {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "QueryRowxContext", varargs...)
+	ret0, _ := ret[0].(*sqlx.Row)
+	return ret0
+}
+
+// QueryRowxContext indicates an expected call of QueryRowxContext.
+func (mr *MockStmtMockRecorder) QueryRowxContext(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRowxContext", reflect.TypeOf((*MockStmt)(nil).QueryRowxContext), varargs...)
+}
+
+// QueryxContext mocks base method.
+func (m *MockStmt) QueryxContext(arg0 context.Context, arg1 ...interface{}) (*sqlx.Rows, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "QueryxContext", varargs...)
+	ret0, _ := ret[0].(*sqlx.Rows)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// QueryxContext indicates an expected call of QueryxContext.
+func (mr *MockStmtMockRecorder) QueryxContext(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0}, arg1...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryxContext", reflect.TypeOf((*MockStmt)(nil).QueryxContext), varargs...)
+}
+
+// SelectContext mocks base method.
+func (m *MockStmt) SelectContext(arg0 context.Context, arg1 interface{}, arg2 ...interface{}) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SelectContext", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SelectContext indicates an expected call of SelectContext.
+func (mr *MockStmtMockRecorder) SelectContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectContext", reflect.TypeOf((*MockStmt)(nil).SelectContext), varargs...)
 }
 
 // MockFile is a mock of File interface.

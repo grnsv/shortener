@@ -50,6 +50,21 @@ func (mr *MockShortenerMockRecorder) ExpandURL(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandURL", reflect.TypeOf((*MockShortener)(nil).ExpandURL), arg0, arg1)
 }
 
+// GetAll mocks base method.
+func (m *MockShortener) GetAll(arg0 context.Context, arg1 string) ([]models.URL, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", arg0, arg1)
+	ret0, _ := ret[0].([]models.URL)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockShortenerMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockShortener)(nil).GetAll), arg0, arg1)
+}
+
 // PingStorage mocks base method.
 func (m *MockShortener) PingStorage(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -80,16 +95,16 @@ func (mr *MockShortenerMockRecorder) ShortenBatch(arg0, arg1, arg2 interface{}) 
 }
 
 // ShortenURL mocks base method.
-func (m *MockShortener) ShortenURL(arg0 context.Context, arg1 string) (string, error) {
+func (m *MockShortener) ShortenURL(arg0 context.Context, arg1, arg2 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ShortenURL", arg0, arg1)
+	ret := m.ctrl.Call(m, "ShortenURL", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ShortenURL indicates an expected call of ShortenURL.
-func (mr *MockShortenerMockRecorder) ShortenURL(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockShortenerMockRecorder) ShortenURL(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShortenURL", reflect.TypeOf((*MockShortener)(nil).ShortenURL), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShortenURL", reflect.TypeOf((*MockShortener)(nil).ShortenURL), arg0, arg1, arg2)
 }

@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	AppEnv          string     `env:"APP_ENV"`
+	JWTSecret       string     `env:"JWT_SECRET"`
 	ServerAddress   NetAddress `env:"SERVER_ADDRESS"`
 	BaseAddress     BaseURI    `env:"BASE_URL"`
 	FileStoragePath string     `env:"FILE_STORAGE_PATH"`
@@ -93,6 +94,12 @@ func WithAppEnv(appEnv string) Option {
 	}
 }
 
+func WithJWTSecret(key string) Option {
+	return func(c *Config) {
+		c.JWTSecret = key
+	}
+}
+
 func WithServerAddress(addr NetAddress) Option {
 	return func(c *Config) {
 		c.ServerAddress = addr
@@ -114,6 +121,7 @@ func New(opts ...Option) *Config {
 
 var config = &Config{
 	AppEnv:          "local",
+	JWTSecret:       "secret",
 	ServerAddress:   NetAddress{"localhost", 8080},
 	BaseAddress:     BaseURI{"http://", NetAddress{"localhost", 8080}},
 	FileStoragePath: "",

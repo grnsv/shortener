@@ -43,3 +43,21 @@ func (s *MemoryStorage) Get(ctx context.Context, short string) (string, error) {
 func (s *MemoryStorage) Ping(ctx context.Context) error {
 	return nil
 }
+
+func (s *MemoryStorage) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
+	var urls []models.URL
+
+	s.urls.Range(func(key, value interface{}) bool {
+		shortURL, ok1 := key.(string)
+		originalURL, ok2 := value.(string)
+		if ok1 && ok2 {
+			urls = append(urls, models.URL{
+				ShortURL:    shortURL,
+				OriginalURL: originalURL,
+			})
+		}
+		return true
+	})
+
+	return urls, nil
+}

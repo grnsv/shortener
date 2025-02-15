@@ -84,3 +84,7 @@ func (s *FileStorage) Get(ctx context.Context, short string) (string, error) {
 func (s *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
+
+func (s *FileStorage) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
+	return s.memory.GetAll(ctx, userID)
+}

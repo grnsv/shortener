@@ -26,16 +26,16 @@ func TestHandleShortenURL(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
-	shortener := service.NewURLShortener(storage)
 	cfg := config.New(
 		config.WithAppEnv("testing"),
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
 		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
+	shortener := service.NewURLShortener(storage, cfg.BaseAddress.String())
 	log, err := logger.New("testing")
 	require.NoError(t, err)
 	handler := NewURLHandler(shortener, cfg, log)
-	ts := httptest.NewServer(NewRouter(handler, log))
+	ts := httptest.NewServer(NewRouter(handler, cfg, log))
 	defer ts.Close()
 
 	type req struct {
@@ -118,16 +118,16 @@ func TestHandleExpandURL(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
-	shortener := service.NewURLShortener(storage)
 	cfg := config.New(
 		config.WithAppEnv("testing"),
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
 		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
+	shortener := service.NewURLShortener(storage, cfg.BaseAddress.String())
 	log, err := logger.New("testing")
 	require.NoError(t, err)
 	handler := NewURLHandler(shortener, cfg, log)
-	ts := httptest.NewServer(NewRouter(handler, log))
+	ts := httptest.NewServer(NewRouter(handler, cfg, log))
 	defer ts.Close()
 
 	client := ts.Client()
@@ -223,16 +223,16 @@ func TestHandleShortenURLJSON(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	require.NoError(t, err)
-	shortener := service.NewURLShortener(storage)
 	cfg := config.New(
 		config.WithAppEnv("testing"),
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
 		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
+	shortener := service.NewURLShortener(storage, cfg.BaseAddress.String())
 	log, err := logger.New("testing")
 	require.NoError(t, err)
 	handler := NewURLHandler(shortener, cfg, log)
-	ts := httptest.NewServer(NewRouter(handler, log))
+	ts := httptest.NewServer(NewRouter(handler, cfg, log))
 	defer ts.Close()
 
 	type req struct {

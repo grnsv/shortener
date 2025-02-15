@@ -25,8 +25,9 @@ type StmtWrapper struct {
 }
 
 type DBStorage struct {
-	db       DB
-	saveStmt Stmt
+	db         DB
+	saveStmt   Stmt
+	getAllStmt Stmt
 }
 
 func NewDBStorage(ctx context.Context, db DB) (*DBStorage, error) {
@@ -44,18 +45,34 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 			id uuid NOT NULL,
 			short_url text NOT NULL,
 			original_url text NOT NULL,
+			user_id uuid NOT NULL,
 			CONSTRAINT urls_pk PRIMARY KEY (id),
 			CONSTRAINT urls_short_url_unique UNIQUE (short_url)
-		)
+		);
+		CREATE INDEX IF NOT EXISTS urls_user_id_idx ON urls (user_id);
 	`)
 	if err != nil {
 		return err
 	}
 
 	s.saveStmt, err = s.db.PreparexContext(ctx, `
-        INSERT INTO urls (id, short_url, original_url)
-        VALUES ($1::uuid, $2, $3)
+        INSERT INTO urls (id, user_id, short_url, original_url)
+        VALUES ($1::uuid, $2::uuid, $3, $4)
         ON CONFLICT DO NOTHING
+    `)
+	if err != nil {
+		return err
+	}
+
+	s.getAllStmt, err = s.db.PreparexContext(ctx, `
+		SELECT
+			short_url,
+			original_url
+		FROM
+			urls
+		WHERE
+			user_id = $1::uuid
+		LIMIT $2 OFFSET $3
     `)
 	if err != nil {
 		return err
@@ -66,6 +83,9 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 
 func (s *DBStorage) Close() error {
 	var err error
+	if err = s.getAllStmt.Close(); err != nil {
+		return err
+	}
 	if err = s.saveStmt.Close(); err != nil {
 		return err
 	}
@@ -76,7 +96,7 @@ func (s *DBStorage) Close() error {
 }
 
 func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
-	result, err := s.saveStmt.ExecContext(ctx, model.UUID, model.ShortURL, model.OriginalURL)
+	result, err := s.saveStmt.ExecContext(ctx, model.UUID, model.UserID, model.ShortURL, model.OriginalURL)
 	if err != nil {
 		return err
 	}
@@ -95,8 +115,8 @@ func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
 
 func (s *DBStorage) SaveMany(ctx context.Context, models []models.URL) error {
 	_, err := s.db.NamedExecContext(ctx, `
-		INSERT INTO urls (id, short_url, original_url)
-        VALUES (:id, :short_url, :original_url)
+		INSERT INTO urls (id, user_id, short_url, original_url)
+        VALUES (:id, :user_id, :short_url, :original_url)
 	`, models)
 	if err != nil {
 		return err
@@ -122,4 +142,26 @@ func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
 
 func (s *DBStorage) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
+}
+
+func (s *DBStorage) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
+	var allUrls []models.URL
+	chunkSize := 1000
+	offset := 0
+
+	for {
+		var urls []models.URL
+		if err := s.getAllStmt.SelectContext(ctx, &urls, userID, chunkSize, offset); err != nil {
+			return nil, err
+		}
+
+		if len(urls) == 0 {
+			break
+		}
+
+		allUrls = append(allUrls, urls...)
+		offset += chunkSize
+	}
+
+	return allUrls, nil
 }
