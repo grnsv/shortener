@@ -19,11 +19,18 @@ func NewRouter(h *URLHandler, config *config.Config, logger logger.Logger) chi.R
 	)
 
 	r.Post("/", h.ShortenURL)
-	r.Post("/api/shorten", h.ShortenURLJSON)
-	r.Post("/api/shorten/batch", h.ShortenBatch)
 	r.Get("/{id}", h.ExpandURL)
 	r.Get("/ping", h.PingDB)
-	r.Get("/api/user/urls", h.GetURLs)
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/shorten", func(r chi.Router) {
+			r.Post("/", h.ShortenURLJSON)
+			r.Post("/batch", h.ShortenBatch)
+		})
+		r.Route("/user/urls", func(r chi.Router) {
+			r.Get("/", h.GetURLs)
+			r.Delete("/", h.DeleteURLs)
+		})
+	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	})

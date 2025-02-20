@@ -32,7 +32,7 @@ var _ = Describe("DBStorage_SaveMany", func() {
 		db = mocks.NewMockDB(ctrl)
 		stmt = mocks.NewMockStmt(ctrl)
 		db.EXPECT().ExecContext(gomock.Any(), gomock.Any()).Return(nil, nil)
-		db.EXPECT().PreparexContext(gomock.Any(), gomock.Any()).Return(stmt, nil).Times(2)
+		db.EXPECT().PreparexContext(gomock.Any(), gomock.Any()).Return(stmt, nil).Times(4)
 		s, err = storage.NewDBStorage(context.Background(), db)
 		Expect(err).To(BeNil())
 	})

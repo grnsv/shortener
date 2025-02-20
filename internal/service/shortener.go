@@ -18,6 +18,7 @@ type Shortener interface {
 	ExpandURL(ctx context.Context, shortURL string) (string, error)
 	PingStorage(ctx context.Context) error
 	GetAll(ctx context.Context, userID string) ([]models.URL, error)
+	DeleteMany(ctx context.Context, userID string, shortURLs []string) error
 }
 
 type URLShortener struct {
@@ -34,7 +35,7 @@ func (s *URLShortener) generateShortURL(url string, userID string) models.URL {
 	return models.URL{
 		UUID:        uuid.String(),
 		UserID:      userID,
-		ShortURL:    s.baseAddress + "/" + base64.URLEncoding.EncodeToString(uuid[:])[:shortURLLength],
+		ShortURL:    base64.URLEncoding.EncodeToString(uuid[:])[:shortURLLength],
 		OriginalURL: url,
 	}
 }
@@ -44,13 +45,13 @@ func (s *URLShortener) ShortenURL(ctx context.Context, url string, userID string
 	err := s.storage.Save(ctx, model)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
-			return model.ShortURL, err
+			return s.baseAddress + "/" + model.ShortURL, err
 		}
 
 		return "", err
 	}
 
-	return model.ShortURL, nil
+	return s.baseAddress + "/" + model.ShortURL, nil
 }
 
 func (s *URLShortener) ShortenBatch(ctx context.Context, longs models.BatchRequest, userID string) (models.BatchResponse, error) {
@@ -63,7 +64,7 @@ func (s *URLShortener) ShortenBatch(ctx context.Context, longs models.BatchReque
 		urls[i] = url
 		shorts[i] = models.BatchResponseItem{
 			CorrelationID: long.CorrelationID,
-			ShortURL:      url.ShortURL,
+			ShortURL:      s.baseAddress + "/" + url.ShortURL,
 		}
 	}
 
@@ -84,5 +85,18 @@ func (s *URLShortener) PingStorage(ctx context.Context) error {
 }
 
 func (s *URLShortener) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
-	return s.storage.GetAll(ctx, userID)
+	urls, err := s.storage.GetAll(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range urls {
+		urls[i].ShortURL = s.baseAddress + "/" + urls[i].ShortURL
+	}
+
+	return urls, nil
+}
+
+func (s *URLShortener) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
+	return s.storage.DeleteMany(ctx, userID, shortURLs)
 }

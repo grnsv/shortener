@@ -35,6 +35,20 @@ func (m *MockShortener) EXPECT() *MockShortenerMockRecorder {
 	return m.recorder
 }
 
+// DeleteMany mocks base method.
+func (m *MockShortener) DeleteMany(arg0 context.Context, arg1 string, arg2 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMany", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMany indicates an expected call of DeleteMany.
+func (mr *MockShortenerMockRecorder) DeleteMany(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMany", reflect.TypeOf((*MockShortener)(nil).DeleteMany), arg0, arg1, arg2)
+}
+
 // ExpandURL mocks base method.
 func (m *MockShortener) ExpandURL(arg0 context.Context, arg1 string) (string, error) {
 	m.ctrl.T.Helper()

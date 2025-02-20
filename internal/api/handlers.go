@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -151,10 +152,15 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := h.shortener.ExpandURL(r.Context(), h.config.BaseAddress.String()+"/"+shortURL)
+	url, err := h.shortener.ExpandURL(r.Context(), shortURL)
 	if err != nil {
-		writeError(w)
-		return
+		if errors.Is(err, storage.ErrDeleted) {
+			w.WriteHeader(http.StatusGone)
+			return
+		} else {
+			writeError(w)
+			return
+		}
 	}
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -195,6 +201,32 @@ func (h *URLHandler) GetURLs(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+}
+
+func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
+	if !ok {
+		h.logger.Error("user ID not found in context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var shortURLs []string
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		writeError(w)
+		return
+	}
+
+	go func() {
+		err := h.shortener.DeleteMany(context.Background(), userID, shortURLs)
+		if err != nil {
+			h.logger.Error(err)
+		}
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func writeError(w http.ResponseWriter) {

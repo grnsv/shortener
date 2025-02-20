@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"io"
 
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/jmoiron/sqlx"
@@ -14,6 +13,7 @@ type Storage interface {
 	SaveMany(ctx context.Context, models []models.URL) error
 	Get(ctx context.Context, short string) (string, error)
 	GetAll(ctx context.Context, userID string) ([]models.URL, error)
+	DeleteMany(ctx context.Context, userID string, shortURLs []string) error
 	Ping(ctx context.Context) error
 	Close() error
 }
@@ -33,8 +33,4 @@ type Stmt interface {
 	QueryxContext(ctx context.Context, args ...interface{}) (*sqlx.Rows, error)
 	SelectContext(ctx context.Context, dest interface{}, args ...interface{}) error
 	Close() error
-}
-
-type File interface {
-	io.ReadWriteCloser
 }

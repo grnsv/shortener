@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/grnsv/shortener/internal/models"
@@ -35,7 +34,7 @@ func (s *MemoryStorage) SaveMany(ctx context.Context, models []models.URL) error
 func (s *MemoryStorage) Get(ctx context.Context, short string) (string, error) {
 	value, ok := s.urls.Load(short)
 	if !ok {
-		return "", errors.New("not found")
+		return "", ErrNotFound
 	}
 	return value.(string), nil
 }
@@ -60,4 +59,12 @@ func (s *MemoryStorage) GetAll(ctx context.Context, userID string) ([]models.URL
 	})
 
 	return urls, nil
+}
+
+func (s *MemoryStorage) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
+	for _, shortURL := range shortURLs {
+		s.urls.Delete(shortURL)
+	}
+
+	return nil
 }

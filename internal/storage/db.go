@@ -5,6 +5,7 @@ import (
 
 	"github.com/grnsv/shortener/internal/models"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 type DBWrapper struct {
@@ -28,6 +29,8 @@ type DBStorage struct {
 	db         DB
 	saveStmt   Stmt
 	getAllStmt Stmt
+	getStmt    Stmt
+	deleteStmt Stmt
 }
 
 func NewDBStorage(ctx context.Context, db DB) (*DBStorage, error) {
@@ -46,6 +49,7 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 			short_url text NOT NULL,
 			original_url text NOT NULL,
 			user_id uuid NOT NULL,
+			is_deleted boolean NOT NULL DEFAULT false,
 			CONSTRAINT urls_pk PRIMARY KEY (id),
 			CONSTRAINT urls_short_url_unique UNIQUE (short_url)
 		);
@@ -56,10 +60,10 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 	}
 
 	s.saveStmt, err = s.db.PreparexContext(ctx, `
-        INSERT INTO urls (id, user_id, short_url, original_url)
-        VALUES ($1::uuid, $2::uuid, $3, $4)
-        ON CONFLICT DO NOTHING
-    `)
+		INSERT INTO urls (id, user_id, short_url, original_url)
+		VALUES ($1::uuid, $2::uuid, $3, $4)
+		ON CONFLICT DO NOTHING
+	`)
 	if err != nil {
 		return err
 	}
@@ -73,7 +77,26 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 		WHERE
 			user_id = $1::uuid
 		LIMIT $2 OFFSET $3
-    `)
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.getStmt, err = s.db.PreparexContext(ctx, `
+		SELECT *
+		FROM urls
+		WHERE short_url = $1
+		LIMIT 1
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.deleteStmt, err = s.db.PreparexContext(ctx, `
+		UPDATE urls
+		SET is_deleted = true
+		WHERE user_id = $1 AND short_url = ANY($2)
+	`)
 	if err != nil {
 		return err
 	}
@@ -83,16 +106,23 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 
 func (s *DBStorage) Close() error {
 	var err error
-	if err = s.getAllStmt.Close(); err != nil {
-		return err
+	if err1 := s.getStmt.Close(); err1 != nil {
+		err = err1
 	}
-	if err = s.saveStmt.Close(); err != nil {
-		return err
+	if err2 := s.getAllStmt.Close(); err2 != nil {
+		err = err2
 	}
-	if err = s.db.Close(); err != nil {
-		return err
+	if err3 := s.saveStmt.Close(); err3 != nil {
+		err = err3
 	}
-	return nil
+	if err4 := s.deleteStmt.Close(); err4 != nil {
+		err = err4
+	}
+	if err5 := s.db.Close(); err5 != nil {
+		err = err5
+	}
+
+	return err
 }
 
 func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
@@ -116,7 +146,7 @@ func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
 func (s *DBStorage) SaveMany(ctx context.Context, models []models.URL) error {
 	_, err := s.db.NamedExecContext(ctx, `
 		INSERT INTO urls (id, user_id, short_url, original_url)
-        VALUES (:id, :user_id, :short_url, :original_url)
+		VALUES (:id, :user_id, :short_url, :original_url)
 	`, models)
 	if err != nil {
 		return err
@@ -126,18 +156,16 @@ func (s *DBStorage) SaveMany(ctx context.Context, models []models.URL) error {
 }
 
 func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
-	var long string
-	err := s.db.QueryRowxContext(ctx, `
-		SELECT original_url
-		FROM urls
-		WHERE short_url = $1
-		LIMIT 1
-	`, short).Scan(&long)
+	var url models.URL
+	err := s.getStmt.GetContext(ctx, &url, short)
 	if err != nil {
 		return "", err
 	}
+	if url.IsDeleted {
+		return "", ErrDeleted
+	}
 
-	return long, nil
+	return url.OriginalURL, nil
 }
 
 func (s *DBStorage) Ping(ctx context.Context) error {
@@ -164,4 +192,9 @@ func (s *DBStorage) GetAll(ctx context.Context, userID string) ([]models.URL, er
 	}
 
 	return allUrls, nil
+}
+
+func (s *DBStorage) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
+	_, err := s.deleteStmt.ExecContext(ctx, userID, pq.Array(shortURLs))
+	return err
 }
