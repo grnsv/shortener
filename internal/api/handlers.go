@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/grnsv/shortener/internal/api/middleware"
@@ -220,7 +221,9 @@ func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		err := h.shortener.DeleteMany(context.Background(), userID, shortURLs)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		err := h.shortener.DeleteMany(ctx, userID, shortURLs)
 		if err != nil {
 			h.logger.Error(err)
 		}
