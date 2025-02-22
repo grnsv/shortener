@@ -59,16 +59,15 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 		return err
 	}
 
-	s.saveStmt, err = s.db.PreparexContext(ctx, `
+	if s.saveStmt, err = s.db.PreparexContext(ctx, `
 		INSERT INTO urls (id, user_id, short_url, original_url)
 		VALUES ($1::uuid, $2::uuid, $3, $4)
 		ON CONFLICT DO NOTHING
-	`)
-	if err != nil {
+	`); err != nil {
 		return err
 	}
 
-	s.getAllStmt, err = s.db.PreparexContext(ctx, `
+	if s.getAllStmt, err = s.db.PreparexContext(ctx, `
 		SELECT
 			short_url,
 			original_url
@@ -77,27 +76,24 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 		WHERE
 			user_id = $1::uuid
 		LIMIT $2 OFFSET $3
-	`)
-	if err != nil {
+	`); err != nil {
 		return err
 	}
 
-	s.getStmt, err = s.db.PreparexContext(ctx, `
+	if s.getStmt, err = s.db.PreparexContext(ctx, `
 		SELECT *
 		FROM urls
 		WHERE short_url = $1
 		LIMIT 1
-	`)
-	if err != nil {
+	`); err != nil {
 		return err
 	}
 
-	s.deleteStmt, err = s.db.PreparexContext(ctx, `
+	if s.deleteStmt, err = s.db.PreparexContext(ctx, `
 		UPDATE urls
 		SET is_deleted = true
 		WHERE user_id = $1 AND short_url = ANY($2)
-	`)
-	if err != nil {
+	`); err != nil {
 		return err
 	}
 
@@ -105,24 +101,22 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 }
 
 func (s *DBStorage) Close() error {
-	var err error
-	if err1 := s.getStmt.Close(); err1 != nil {
-		err = err1
+	if err := s.getStmt.Close(); err != nil {
+		return err
 	}
-	if err2 := s.getAllStmt.Close(); err2 != nil {
-		err = err2
+	if err := s.getAllStmt.Close(); err != nil {
+		return err
 	}
-	if err3 := s.saveStmt.Close(); err3 != nil {
-		err = err3
+	if err := s.saveStmt.Close(); err != nil {
+		return err
 	}
-	if err4 := s.deleteStmt.Close(); err4 != nil {
-		err = err4
+	if err := s.deleteStmt.Close(); err != nil {
+		return err
 	}
-	if err5 := s.db.Close(); err5 != nil {
-		err = err5
+	if err := s.db.Close(); err != nil {
+		return err
 	}
-
-	return err
+	return nil
 }
 
 func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
