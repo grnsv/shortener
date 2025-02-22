@@ -23,13 +23,13 @@ var _ = Describe("ShortenBatch", func() {
 	var (
 		ctrl      *gomock.Controller
 		storage   *mocks.MockStorage
-		shortener *service.URLShortener
+		shortener service.Shortener
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		storage = mocks.NewMockStorage(ctrl)
-		shortener = service.NewURLShortener(storage, "")
+		shortener = service.NewShortener(storage, storage, storage, storage, "")
 	})
 
 	AfterEach(func() {

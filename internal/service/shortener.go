@@ -13,24 +13,63 @@ import (
 const shortURLLength = 8
 
 type Shortener interface {
+	URLShortener
+	BatchShortener
+	URLExpander
+	StoragePinger
+	URLLister
+	URLDeleter
+}
+
+type URLShortener interface {
 	ShortenURL(ctx context.Context, url string, userID string) (string, error)
+}
+
+type BatchShortener interface {
 	ShortenBatch(ctx context.Context, longs models.BatchRequest, userID string) (models.BatchResponse, error)
+}
+
+type URLExpander interface {
 	ExpandURL(ctx context.Context, shortURL string) (string, error)
+}
+
+type StoragePinger interface {
 	PingStorage(ctx context.Context) error
+}
+
+type URLLister interface {
 	GetAll(ctx context.Context, userID string) ([]models.URL, error)
+}
+
+type URLDeleter interface {
 	DeleteMany(ctx context.Context, userID string, shortURLs []string) error
 }
 
-type URLShortener struct {
-	storage     storage.Storage
+type Service struct {
+	saver       storage.Saver
+	retriever   storage.Retriever
+	deleter     storage.Deleter
+	pinger      storage.Pinger
 	baseAddress string
 }
 
-func NewURLShortener(storage storage.Storage, baseAddress string) *URLShortener {
-	return &URLShortener{storage: storage, baseAddress: baseAddress}
+func NewShortener(
+	saver storage.Saver,
+	retriever storage.Retriever,
+	deleter storage.Deleter,
+	pinger storage.Pinger,
+	baseAddress string,
+) Shortener {
+	return &Service{
+		saver:       saver,
+		retriever:   retriever,
+		deleter:     deleter,
+		pinger:      pinger,
+		baseAddress: baseAddress,
+	}
 }
 
-func (s *URLShortener) generateShortURL(url string, userID string) models.URL {
+func (s *Service) generateShortURL(url string, userID string) models.URL {
 	uuid := uuid.NewSHA1(uuid.NameSpaceURL, []byte(url))
 	return models.URL{
 		UUID:        uuid.String(),
@@ -40,9 +79,9 @@ func (s *URLShortener) generateShortURL(url string, userID string) models.URL {
 	}
 }
 
-func (s *URLShortener) ShortenURL(ctx context.Context, url string, userID string) (string, error) {
+func (s *Service) ShortenURL(ctx context.Context, url string, userID string) (string, error) {
 	model := s.generateShortURL(url, userID)
-	err := s.storage.Save(ctx, model)
+	err := s.saver.Save(ctx, model)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
 			return s.baseAddress + "/" + model.ShortURL, err
@@ -54,7 +93,7 @@ func (s *URLShortener) ShortenURL(ctx context.Context, url string, userID string
 	return s.baseAddress + "/" + model.ShortURL, nil
 }
 
-func (s *URLShortener) ShortenBatch(ctx context.Context, longs models.BatchRequest, userID string) (models.BatchResponse, error) {
+func (s *Service) ShortenBatch(ctx context.Context, longs models.BatchRequest, userID string) (models.BatchResponse, error) {
 	length := len(longs)
 	shorts := make([]models.BatchResponseItem, length)
 	urls := make([]models.URL, length)
@@ -68,7 +107,7 @@ func (s *URLShortener) ShortenBatch(ctx context.Context, longs models.BatchReque
 		}
 	}
 
-	err := s.storage.SaveMany(ctx, urls)
+	err := s.saver.SaveMany(ctx, urls)
 	if err != nil {
 		return nil, err
 	}
@@ -76,16 +115,16 @@ func (s *URLShortener) ShortenBatch(ctx context.Context, longs models.BatchReque
 	return shorts, nil
 }
 
-func (s *URLShortener) ExpandURL(ctx context.Context, shortURL string) (string, error) {
-	return s.storage.Get(ctx, shortURL)
+func (s *Service) ExpandURL(ctx context.Context, shortURL string) (string, error) {
+	return s.retriever.Get(ctx, shortURL)
 }
 
-func (s *URLShortener) PingStorage(ctx context.Context) error {
-	return s.storage.Ping(ctx)
+func (s *Service) PingStorage(ctx context.Context) error {
+	return s.pinger.Ping(ctx)
 }
 
-func (s *URLShortener) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
-	urls, err := s.storage.GetAll(ctx, userID)
+func (s *Service) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
+	urls, err := s.retriever.GetAll(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +136,6 @@ func (s *URLShortener) GetAll(ctx context.Context, userID string) ([]models.URL,
 	return urls, nil
 }
 
-func (s *URLShortener) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
-	return s.storage.DeleteMany(ctx, userID, shortURLs)
+func (s *Service) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
+	return s.deleter.DeleteMany(ctx, userID, shortURLs)
 }

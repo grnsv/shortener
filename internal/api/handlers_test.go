@@ -31,7 +31,7 @@ func TestHandleShortenURL(t *testing.T) {
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
 		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
-	shortener := service.NewURLShortener(storage, cfg.BaseAddress.String())
+	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 	log, err := logger.New("testing")
 	require.NoError(t, err)
 	handler := NewURLHandler(shortener, cfg, log)
@@ -123,7 +123,7 @@ func TestHandleExpandURL(t *testing.T) {
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
 		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
-	shortener := service.NewURLShortener(storage, cfg.BaseAddress.String())
+	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 	log, err := logger.New("testing")
 	require.NoError(t, err)
 	handler := NewURLHandler(shortener, cfg, log)
@@ -228,7 +228,7 @@ func TestHandleShortenURLJSON(t *testing.T) {
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
 		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
-	shortener := service.NewURLShortener(storage, cfg.BaseAddress.String())
+	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 	log, err := logger.New("testing")
 	require.NoError(t, err)
 	handler := NewURLHandler(shortener, cfg, log)
