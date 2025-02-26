@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/grnsv/shortener/internal/api/middleware"
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/grnsv/shortener/internal/logger"
 	"github.com/grnsv/shortener/internal/models"
@@ -29,6 +32,13 @@ func NewURLHandler(shortener service.Shortener, config *config.Config, logger lo
 }
 
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
+	if !ok {
+		h.logger.Error("user ID not found in context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -43,7 +53,7 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 
-	shortURL, err := h.shortener.ShortenURL(r.Context(), string(body))
+	shortURL, err := h.shortener.ShortenURL(r.Context(), string(body), userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
 			w.WriteHeader(http.StatusConflict)
@@ -54,13 +64,20 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}
 
-	_, err = w.Write([]byte(h.config.BaseAddress.String() + "/" + shortURL))
+	_, err = w.Write([]byte(shortURL))
 	if err != nil {
 		writeError(w)
 	}
 }
 
 func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
+	if !ok {
+		h.logger.Error("user ID not found in context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	var req models.ShortenRequest
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -76,7 +93,7 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	shortURL, err := h.shortener.ShortenURL(r.Context(), req.URL)
+	shortURL, err := h.shortener.ShortenURL(r.Context(), req.URL, userID)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
 			w.WriteHeader(http.StatusConflict)
@@ -88,7 +105,7 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = json.NewEncoder(w).Encode(models.ShortenResponse{
-		Result: h.config.BaseAddress.String() + "/" + shortURL,
+		Result: shortURL,
 	})
 	if err != nil {
 		writeError(w)
@@ -96,6 +113,13 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
+	if !ok {
+		h.logger.Error("user ID not found in context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	var req models.BatchRequest
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -109,7 +133,7 @@ func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.shortener.ShortenBatch(r.Context(), req, h.config.BaseAddress.String()+"/")
+	resp, err := h.shortener.ShortenBatch(r.Context(), req, userID)
 	if err != nil {
 		writeError(w)
 	}
@@ -131,8 +155,13 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := h.shortener.ExpandURL(r.Context(), shortURL)
 	if err != nil {
-		writeError(w)
-		return
+		if errors.Is(err, storage.ErrDeleted) {
+			w.WriteHeader(http.StatusGone)
+			return
+		} else {
+			writeError(w)
+			return
+		}
 	}
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -145,6 +174,62 @@ func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *URLHandler) GetURLs(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
+	if !ok {
+		h.logger.Error("user ID not found in context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	urls, err := h.shortener.GetAll(r.Context(), userID)
+	if err != nil {
+		h.logger.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(urls) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(urls)
+	if err != nil {
+		h.logger.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
+	if !ok {
+		h.logger.Error("user ID not found in context")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var shortURLs []string
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		writeError(w)
+		return
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		err := h.shortener.DeleteMany(ctx, userID, shortURLs)
+		if err != nil {
+			h.logger.Error(err)
+		}
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func writeError(w http.ResponseWriter) {

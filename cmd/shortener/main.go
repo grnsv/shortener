@@ -26,9 +26,9 @@ func main() {
 	}
 	defer storage.Close()
 
-	shortener := service.NewURLShortener(storage)
+	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 	handler := api.NewURLHandler(shortener, cfg, log)
-	r := api.NewRouter(handler, log)
+	r := api.NewRouter(handler, cfg, log)
 	if err := http.ListenAndServe(cfg.ServerAddress.String(), r); err != nil {
 		fatal(err)
 	}

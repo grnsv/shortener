@@ -3,14 +3,17 @@ package storage
 import (
 	"context"
 	"errors"
-	"os"
 
 	"github.com/grnsv/shortener/internal/config"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
-var ErrAlreadyExist = errors.New("already exist")
+var (
+	ErrAlreadyExist = errors.New("already exist")
+	ErrNotFound     = errors.New("not found")
+	ErrDeleted      = errors.New("deleted")
+)
 
 func New(ctx context.Context, cfg *config.Config) (Storage, error) {
 	if cfg.DatabaseDSN != "" {
@@ -23,12 +26,7 @@ func New(ctx context.Context, cfg *config.Config) (Storage, error) {
 	}
 
 	if cfg.FileStoragePath != "" {
-		file, err := os.OpenFile(cfg.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-		if err != nil {
-			return nil, err
-		}
-
-		return NewFileStorage(ctx, file)
+		return NewFileStorage(ctx, cfg.FileStoragePath)
 	}
 
 	return NewMemoryStorage(ctx)
