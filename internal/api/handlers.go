@@ -136,6 +136,7 @@ func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.shortener.ShortenBatch(r.Context(), req, userID)
 	if err != nil {
 		writeError(w)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

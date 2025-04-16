@@ -112,6 +112,12 @@ func WithBaseAddress(url BaseURI) Option {
 	}
 }
 
+func WithDatabaseDSN(dsn string) Option {
+	return func(c *Config) {
+		c.DatabaseDSN = dsn
+	}
+}
+
 func New(opts ...Option) *Config {
 	for _, opt := range opts {
 		opt(config)
