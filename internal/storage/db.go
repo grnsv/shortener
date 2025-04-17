@@ -75,7 +75,6 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 			urls
 		WHERE
 			user_id = $1::uuid
-		LIMIT $2 OFFSET $3
 	`); err != nil {
 		return err
 	}
@@ -167,25 +166,12 @@ func (s *DBStorage) Ping(ctx context.Context) error {
 }
 
 func (s *DBStorage) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
-	var allUrls []models.URL
-	chunkSize := 1000
-	offset := 0
-
-	for {
-		var urls []models.URL
-		if err := s.getAllStmt.SelectContext(ctx, &urls, userID, chunkSize, offset); err != nil {
-			return nil, err
-		}
-
-		if len(urls) == 0 {
-			break
-		}
-
-		allUrls = append(allUrls, urls...)
-		offset += chunkSize
+	var urls []models.URL
+	if err := s.getAllStmt.SelectContext(ctx, &urls, userID); err != nil {
+		return nil, err
 	}
 
-	return allUrls, nil
+	return urls, nil
 }
 
 func (s *DBStorage) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
