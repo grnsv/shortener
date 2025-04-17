@@ -11,7 +11,7 @@ import (
 
 func BenchmarkService(b *testing.B) {
 	cfg := config.New(
-		config.WithDatabaseDSN("postgresql://user:password@localhost:5432/shortener?sslmode=disable"),
+		config.WithDatabaseDSN("postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable"),
 	)
 	log, err := logger.New("testing")
 	if err != nil {
