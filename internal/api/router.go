@@ -9,6 +9,20 @@ import (
 	"github.com/grnsv/shortener/internal/logger"
 )
 
+// NewRouter creates and configures a new chi.Router for the URL shortener API.
+//
+// It registers all API endpoints, applies middleware for logging, compression, and authentication,
+// and sets up handlers for URL shortening, expansion, health checks, and user-specific operations.
+//
+// Parameters:
+//
+//	h      - pointer to URLHandler containing all endpoint handler methods
+//	config - pointer to Config struct with application configuration (e.g., JWT secret)
+//	logger - Logger interface for request logging
+//
+// Returns:
+//
+//	chi.Router - a fully configured router ready to be used by an HTTP server
 func NewRouter(h *URLHandler, config *config.Config, logger logger.Logger) chi.Router {
 	r := chi.NewRouter()
 

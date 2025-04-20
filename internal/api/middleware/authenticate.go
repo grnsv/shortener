@@ -16,14 +16,19 @@ const cookieName = "token"
 
 var signingMethod = jwt.SigningMethodHS256
 
+// Claims represents the JWT claims used for authentication.
 type Claims struct {
 	jwt.RegisteredClaims
 }
 
 type contextKey string
 
+// UserIDContextKey is the context key for storing the user ID.
 const UserIDContextKey contextKey = "userID"
 
+// Authenticate is a middleware that authenticates users using JWT cookies.
+// It sets a user ID in the request context, generating a new one if needed.
+// If authentication fails, it returns an appropriate HTTP error.
 func Authenticate(key string, logger logger.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +106,7 @@ func refreshCookie(w http.ResponseWriter, key string, userID string) error {
 	return nil
 }
 
+// BuildAuthCookie builds a new authentication cookie for the given user ID.
 func BuildAuthCookie(key string, userID string) (*http.Cookie, error) {
 	tokenString, err := buildJWTString(key, userID)
 	if err != nil {

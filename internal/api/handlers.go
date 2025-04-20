@@ -17,12 +17,14 @@ import (
 	"github.com/grnsv/shortener/internal/storage"
 )
 
+// URLHandler handles HTTP requests for the URL shortener service.
 type URLHandler struct {
-	shortener service.Shortener
-	config    *config.Config
-	logger    logger.Logger
+	shortener service.Shortener // Service for URL shortening logic
+	config    *config.Config    // Application configuration
+	logger    logger.Logger     // Logger for error and info messages
 }
 
+// NewURLHandler creates a new URLHandler with the given shortener service, configuration, and logger.
 func NewURLHandler(shortener service.Shortener, config *config.Config, logger logger.Logger) *URLHandler {
 	return &URLHandler{
 		shortener: shortener,
@@ -31,6 +33,8 @@ func NewURLHandler(shortener service.Shortener, config *config.Config, logger lo
 	}
 }
 
+// ShortenURL handles plain text POST requests to shorten a URL.
+// It expects the URL in the request body and returns the shortened URL as plain text.
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
 	if !ok {
@@ -70,6 +74,8 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ShortenURLJSON handles JSON POST requests to shorten a URL.
+// It expects a JSON body with a URL field and returns the shortened URL in a JSON response.
 func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
 	if !ok {
@@ -112,6 +118,8 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ShortenBatch handles batch URL shortening requests.
+// It expects a JSON array of URLs and returns a JSON array of shortened URLs.
 func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
 	if !ok {
@@ -147,6 +155,8 @@ func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ExpandURL handles GET requests to expand a shortened URL.
+// It redirects the client to the original URL if found.
 func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "id")
 	if shortURL == "" {
@@ -168,6 +178,8 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
+// PingDB handles health check requests for the storage backend.
+// It returns 200 OK if the storage is reachable, otherwise 500 Internal Server Error.
 func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
 	if err := h.shortener.PingStorage(r.Context()); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -177,6 +189,8 @@ func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// GetURLs handles requests to retrieve all URLs for a user.
+// It returns a JSON array of URLs or 204 No Content if none exist.
 func (h *URLHandler) GetURLs(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
 	if !ok {
@@ -205,6 +219,8 @@ func (h *URLHandler) GetURLs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteURLs handles requests to delete multiple shortened URLs for a user.
+// It accepts a JSON array of short URL IDs and processes deletion asynchronously.
 func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDContextKey).(string)
 	if !ok {
