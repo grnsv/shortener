@@ -19,11 +19,13 @@ func isSupportedContentType(contentType string) bool {
 	return false
 }
 
+// compressWriter wraps http.ResponseWriter and gzip.Writer to provide gzip compression for responses.
 type compressWriter struct {
 	w  http.ResponseWriter
 	zw *gzip.Writer
 }
 
+// newCompressWriter creates a new compressWriter for the given http.ResponseWriter.
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w:  w,
@@ -31,14 +33,17 @@ func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	}
 }
 
+// Header returns the header map that will be sent by WriteHeader.
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
+// Write writes compressed data to the underlying gzip.Writer.
 func (c *compressWriter) Write(p []byte) (int, error) {
 	return c.zw.Write(p)
 }
 
+// WriteHeader sends an HTTP response header with the provided status code and sets Content-Encoding if appropriate.
 func (c *compressWriter) WriteHeader(statusCode int) {
 	if statusCode < 300 {
 		c.w.Header().Set("Content-Encoding", "gzip")
@@ -46,15 +51,18 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 	c.w.WriteHeader(statusCode)
 }
 
+// Close closes the underlying gzip.Writer.
 func (c *compressWriter) Close() error {
 	return c.zw.Close()
 }
 
+// compressReader wraps an io.ReadCloser and gzip.Reader to provide gzip decompression for requests.
 type compressReader struct {
 	r  io.ReadCloser
 	zr *gzip.Reader
 }
 
+// newCompressReader creates a new compressReader for the given io.ReadCloser.
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -67,10 +75,12 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read reads decompressed data from the underlying gzip.Reader.
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
+// Close closes the underlying gzip.Reader and io.ReadCloser.
 func (c *compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err
@@ -78,6 +88,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// WithCompressing is a middleware that handles gzip compression and decompression for supported requests and responses.
 func WithCompressing(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

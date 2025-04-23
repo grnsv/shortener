@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -266,6 +267,148 @@ var _ = Describe("GetURLs", func() {
 			err = json.NewDecoder(resp.Body).Decode(&responseURLs)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(urls)).To(Equal(len(responseURLs)))
+		})
+	})
+})
+
+var _ = Describe("ShortenBatch", func() {
+	const userID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+	var (
+		ctrl          *gomock.Controller
+		mockShortener *mocks.MockShortener
+		cfg           *config.Config
+		log           logger.Logger
+		handler       *api.URLHandler
+		router        chi.Router
+		ts            *httptest.Server
+	)
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+		mockShortener = mocks.NewMockShortener(ctrl)
+		cfg = config.New(config.WithJWTSecret("secret"))
+		log, _ = logger.New("testing")
+		handler = api.NewURLHandler(mockShortener, cfg, log)
+		router = api.NewRouter(handler, cfg, log)
+		ts = httptest.NewServer(router)
+	})
+
+	AfterEach(func() {
+		ts.Close()
+		ctrl.Finish()
+	})
+
+	Context("when batch request is valid", func() {
+		It("returns status 201 Created and batch response", func() {
+			batchReq := models.BatchRequest{
+				{CorrelationID: "1", OriginalURL: "http://example.com/1"},
+				{CorrelationID: "2", OriginalURL: "http://example.com/2"},
+			}
+			batchResp := models.BatchResponse{
+				{CorrelationID: "1", ShortURL: "http://localhost:8080/short1"},
+				{CorrelationID: "2", ShortURL: "http://localhost:8080/short2"},
+			}
+			mockShortener.EXPECT().ShortenBatch(gomock.Any(), batchReq, userID).Return(batchResp, nil)
+
+			body, err := json.Marshal(batchReq)
+			Expect(err).NotTo(HaveOccurred())
+			req, err := http.NewRequest("POST", ts.URL+"/api/shorten/batch", bytes.NewReader(body))
+			Expect(err).NotTo(HaveOccurred())
+			cookie, err := middleware.BuildAuthCookie("secret", userID)
+			Expect(err).NotTo(HaveOccurred())
+			req.AddCookie(cookie)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
+			var got models.BatchResponse
+			err = json.NewDecoder(resp.Body).Decode(&got)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(got).To(Equal(batchResp))
+		})
+	})
+
+	Context("when batch request is invalid", func() {
+		It("returns status 400 BadRequest", func() {
+			body := []byte(`invalid json`)
+			req, err := http.NewRequest("POST", ts.URL+"/api/shorten/batch", bytes.NewReader(body))
+			Expect(err).NotTo(HaveOccurred())
+			cookie, err := middleware.BuildAuthCookie("secret", userID)
+			Expect(err).NotTo(HaveOccurred())
+			req.AddCookie(cookie)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
+		})
+	})
+})
+
+var _ = Describe("DeleteURLs", func() {
+	const userID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+	var (
+		ctrl          *gomock.Controller
+		mockShortener *mocks.MockShortener
+		cfg           *config.Config
+		log           logger.Logger
+		handler       *api.URLHandler
+		router        chi.Router
+		ts            *httptest.Server
+	)
+
+	BeforeEach(func() {
+		ctrl = gomock.NewController(GinkgoT())
+		mockShortener = mocks.NewMockShortener(ctrl)
+		cfg = config.New(config.WithJWTSecret("secret"))
+		log, _ = logger.New("testing")
+		handler = api.NewURLHandler(mockShortener, cfg, log)
+		router = api.NewRouter(handler, cfg, log)
+		ts = httptest.NewServer(router)
+	})
+
+	AfterEach(func() {
+		ts.Close()
+		ctrl.Finish()
+	})
+
+	Context("when delete request is valid", func() {
+		It("returns status 202 Accepted", func() {
+			shortURLs := []string{"short1", "short2"}
+			mockShortener.EXPECT().DeleteMany(gomock.Any(), userID, shortURLs).Return(nil)
+
+			body, _ := json.Marshal(shortURLs)
+			req, err := http.NewRequest("DELETE", ts.URL+"/api/user/urls", bytes.NewReader(body))
+			Expect(err).NotTo(HaveOccurred())
+			cookie, err := middleware.BuildAuthCookie("secret", userID)
+			Expect(err).NotTo(HaveOccurred())
+			req.AddCookie(cookie)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
+		})
+	})
+
+	Context("when delete request is invalid", func() {
+		It("returns status 400 BadRequest", func() {
+			body := []byte(`invalid json`)
+			req, err := http.NewRequest("DELETE", ts.URL+"/api/user/urls", bytes.NewReader(body))
+			Expect(err).NotTo(HaveOccurred())
+			cookie, err := middleware.BuildAuthCookie("secret", userID)
+			Expect(err).NotTo(HaveOccurred())
+			req.AddCookie(cookie)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 		})
 	})
 })

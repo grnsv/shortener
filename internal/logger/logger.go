@@ -1,3 +1,6 @@
+// Package logger provides a unified logging interface and a constructor
+// for creating zap-based loggers with different configurations depending
+// on the environment.
 package logger
 
 import (
@@ -6,6 +9,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// Logger defines a generic logging interface with methods for various
+// log levels and line-ending variants, as well as a Sync method to flush logs.
 type Logger interface {
 	Debug(args ...interface{})
 	Info(args ...interface{})
@@ -14,22 +19,6 @@ type Logger interface {
 	DPanic(args ...interface{})
 	Panic(args ...interface{})
 	Fatal(args ...interface{})
-
-	Debugf(template string, args ...interface{})
-	Infof(template string, args ...interface{})
-	Warnf(template string, args ...interface{})
-	Errorf(template string, args ...interface{})
-	DPanicf(template string, args ...interface{})
-	Panicf(template string, args ...interface{})
-	Fatalf(template string, args ...interface{})
-
-	Debugw(msg string, keysAndValues ...interface{})
-	Infow(msg string, keysAndValues ...interface{})
-	Warnw(msg string, keysAndValues ...interface{})
-	Errorw(msg string, keysAndValues ...interface{})
-	DPanicw(msg string, keysAndValues ...interface{})
-	Panicw(msg string, keysAndValues ...interface{})
-	Fatalw(msg string, keysAndValues ...interface{})
 
 	Debugln(args ...interface{})
 	Infoln(args ...interface{})
@@ -42,6 +31,10 @@ type Logger interface {
 	Sync() error
 }
 
+// New creates and returns a new Logger instance based on the provided
+// environment string. Supported environments are "production", "development",
+// and "testing". Additional zap options can be passed as variadic arguments.
+// Returns an error if logger initialization fails.
 func New(env string, opts ...zap.Option) (Logger, error) {
 	if env == "testing" {
 		return zap.NewNop().Sugar(), nil

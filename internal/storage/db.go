@@ -8,10 +8,12 @@ import (
 	"github.com/lib/pq"
 )
 
+// DBWrapper wraps a sqlx.DB to implement the DB interface.
 type DBWrapper struct {
 	*sqlx.DB
 }
 
+// PreparexContext prepares a statement with context and returns a wrapped statement.
 func (db *DBWrapper) PreparexContext(ctx context.Context, query string) (Stmt, error) {
 	stmt, err := db.DB.PreparexContext(ctx, query)
 	if err != nil {
@@ -21,10 +23,12 @@ func (db *DBWrapper) PreparexContext(ctx context.Context, query string) (Stmt, e
 	return &StmtWrapper{stmt}, nil
 }
 
+// StmtWrapper wraps a sqlx.Stmt to implement the Stmt interface.
 type StmtWrapper struct {
 	*sqlx.Stmt
 }
 
+// DBStorage provides methods to interact with the URLs database.
 type DBStorage struct {
 	db         DB
 	saveStmt   Stmt
@@ -33,6 +37,7 @@ type DBStorage struct {
 	deleteStmt Stmt
 }
 
+// NewDBStorage creates a new DBStorage and initializes the database schema and prepared statements.
 func NewDBStorage(ctx context.Context, db DB) (*DBStorage, error) {
 	storage := &DBStorage{db: db}
 	if err := storage.initDB(ctx); err != nil {
@@ -75,7 +80,6 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 			urls
 		WHERE
 			user_id = $1::uuid
-		LIMIT $2 OFFSET $3
 	`); err != nil {
 		return err
 	}
@@ -100,6 +104,7 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 	return nil
 }
 
+// Close closes all prepared statements and the underlying database connection.
 func (s *DBStorage) Close() error {
 	if err := s.getStmt.Close(); err != nil {
 		return err
@@ -119,6 +124,7 @@ func (s *DBStorage) Close() error {
 	return nil
 }
 
+// Save inserts a new URL record into the database.
 func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
 	result, err := s.saveStmt.ExecContext(ctx, model.UUID, model.UserID, model.ShortURL, model.OriginalURL)
 	if err != nil {
@@ -137,6 +143,7 @@ func (s *DBStorage) Save(ctx context.Context, model models.URL) error {
 	return nil
 }
 
+// SaveMany inserts multiple URL records into the database.
 func (s *DBStorage) SaveMany(ctx context.Context, models []models.URL) error {
 	_, err := s.db.NamedExecContext(ctx, `
 		INSERT INTO urls (id, user_id, short_url, original_url)
@@ -149,6 +156,7 @@ func (s *DBStorage) SaveMany(ctx context.Context, models []models.URL) error {
 	return nil
 }
 
+// Get retrieves the original URL for a given short URL.
 func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
 	var url models.URL
 	err := s.getStmt.GetContext(ctx, &url, short)
@@ -162,32 +170,22 @@ func (s *DBStorage) Get(ctx context.Context, short string) (string, error) {
 	return url.OriginalURL, nil
 }
 
+// Ping checks the database connection.
 func (s *DBStorage) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
 
+// GetAll retrieves all URLs for a given user.
 func (s *DBStorage) GetAll(ctx context.Context, userID string) ([]models.URL, error) {
-	var allUrls []models.URL
-	chunkSize := 1000
-	offset := 0
-
-	for {
-		var urls []models.URL
-		if err := s.getAllStmt.SelectContext(ctx, &urls, userID, chunkSize, offset); err != nil {
-			return nil, err
-		}
-
-		if len(urls) == 0 {
-			break
-		}
-
-		allUrls = append(allUrls, urls...)
-		offset += chunkSize
+	var urls []models.URL
+	if err := s.getAllStmt.SelectContext(ctx, &urls, userID); err != nil {
+		return nil, err
 	}
 
-	return allUrls, nil
+	return urls, nil
 }
 
+// DeleteMany marks multiple URLs as deleted for a given user.
 func (s *DBStorage) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
 	_, err := s.deleteStmt.ExecContext(ctx, userID, pq.Array(shortURLs))
 	return err
