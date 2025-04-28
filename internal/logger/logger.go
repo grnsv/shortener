@@ -13,20 +13,28 @@ import (
 // log levels and line-ending variants, as well as a Sync method to flush logs.
 type Logger interface {
 	Debug(args ...interface{})
-	Info(args ...interface{})
-	Warn(args ...interface{})
+	// Info(args ...interface{})
+	// Warn(args ...interface{})
 	Error(args ...interface{})
-	DPanic(args ...interface{})
-	Panic(args ...interface{})
-	Fatal(args ...interface{})
+	// DPanic(args ...interface{})
+	// Panic(args ...interface{})
+	// Fatal(args ...interface{})
 
-	Debugln(args ...interface{})
+	// Debugf(template string, args ...interface{})
+	// Infof(template string, args ...interface{})
+	// Warnf(template string, args ...interface{})
+	Errorf(template string, args ...interface{})
+	// DPanicf(template string, args ...interface{})
+	// Panicf(template string, args ...interface{})
+	// Fatalf(template string, args ...interface{})
+
+	// Debugln(args ...interface{})
 	Infoln(args ...interface{})
-	Warnln(args ...interface{})
-	Errorln(args ...interface{})
-	DPanicln(args ...interface{})
-	Panicln(args ...interface{})
-	Fatalln(args ...interface{})
+	// Warnln(args ...interface{})
+	// Errorln(args ...interface{})
+	// DPanicln(args ...interface{})
+	// Panicln(args ...interface{})
+	// Fatalln(args ...interface{})
 
 	Sync() error
 }

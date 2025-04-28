@@ -1,3 +1,6 @@
+// Package storage provides interfaces and implementations for persistent and in-memory
+// storage backends used by the URL shortener service. It supports PostgreSQL, file-based,
+// and in-memory storage options, and defines common error variables for storage operations.
 package storage
 
 import (

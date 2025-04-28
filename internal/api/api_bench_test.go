@@ -16,6 +16,16 @@ import (
 	"github.com/grnsv/shortener/internal/storage"
 )
 
+func must(b *testing.B, fn func() error) {
+	handleError(b, fn())
+}
+
+func handleError(b *testing.B, err error) {
+	if err != nil {
+		b.Fatal(err)
+	}
+}
+
 func BenchmarkApi(b *testing.B) {
 	const (
 		userID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
@@ -28,24 +38,18 @@ func BenchmarkApi(b *testing.B) {
 		config.WithDatabaseDSN("postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable"),
 	)
 	log, err := logger.New("testing")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer log.Sync()
+	handleError(b, err)
+	defer must(b, log.Sync)
 
 	storage, err := storage.New(context.Background(), cfg)
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer storage.Close()
+	handleError(b, err)
+	defer must(b, storage.Close)
 
 	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 	handler := NewURLHandler(shortener, cfg, log)
 	router := NewRouter(handler, cfg, log)
 	cookie, err := middleware.BuildAuthCookie(secret, userID)
-	if err != nil {
-		b.Fatal(err)
-	}
+	handleError(b, err)
 
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -57,9 +61,7 @@ func BenchmarkApi(b *testing.B) {
 	makeRequest := func(method, path, body, contentType string) *http.Request {
 		b.Helper()
 		req, err := http.NewRequest(method, path, strings.NewReader(body))
-		if err != nil {
-			b.Fatal(err)
-		}
+		handleError(b, err)
 		req.AddCookie(cookie)
 		if contentType != "" {
 			req.Header.Set("Content-Type", contentType)
@@ -70,15 +72,13 @@ func BenchmarkApi(b *testing.B) {
 	doRequest := func(req *http.Request) *http.Response {
 		b.Helper()
 		resp, err := client.Do(req)
-		if err != nil {
-			b.Fatal(err)
-		}
+		handleError(b, err)
 		return resp
 	}
 
 	req := makeRequest(http.MethodPost, ts.URL, "https://practicum.yandex.ru/", "text/plain")
 	resp := doRequest(req)
-	resp.Body.Close()
+	handleError(b, resp.Body.Close())
 
 	b.ResetTimer()
 
@@ -87,21 +87,21 @@ func BenchmarkApi(b *testing.B) {
 			url := fmt.Sprintf("https://app.pachca.com/chats/%d", rand.Intn(20_000_000))
 			req := makeRequest(http.MethodPost, ts.URL, url, "text/plain")
 			resp := doRequest(req)
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 
 	b.Run("ExpandURL", func(b *testing.B) {
 		for i := 0; i < n; i++ {
 			resp := doRequest(makeRequest(http.MethodGet, ts.URL+"/kv430TPx", "", ""))
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 
 	b.Run("PingDB", func(b *testing.B) {
 		for i := 0; i < n; i++ {
 			resp := doRequest(makeRequest(http.MethodGet, ts.URL+"/ping", "", ""))
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 
@@ -110,7 +110,7 @@ func BenchmarkApi(b *testing.B) {
 			body := fmt.Sprintf(`{"url":"https://app.pachca.com/chats/%d"}`, rand.Intn(20_000_000))
 			req := makeRequest(http.MethodPost, ts.URL+"/api/shorten", body, "application/json")
 			resp := doRequest(req)
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 
@@ -124,7 +124,7 @@ func BenchmarkApi(b *testing.B) {
 		for i := 0; i < n; i++ {
 			req := makeRequest(http.MethodPost, ts.URL+"/api/shorten/batch", body, "application/json")
 			resp := doRequest(req)
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 
@@ -132,7 +132,7 @@ func BenchmarkApi(b *testing.B) {
 		for i := 0; i < n; i++ {
 			req := makeRequest(http.MethodGet, ts.URL+"/api/user/urls", "", "")
 			resp := doRequest(req)
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 
@@ -146,7 +146,7 @@ func BenchmarkApi(b *testing.B) {
 		for i := 0; i < n; i++ {
 			req := makeRequest(http.MethodDelete, ts.URL+"/api/user/urls", body, "application/json")
 			resp := doRequest(req)
-			resp.Body.Close()
+			handleError(b, resp.Body.Close())
 		}
 	})
 }

@@ -1,3 +1,6 @@
+// Package api provides HTTP handlers and middleware for the URL shortener service.
+// It defines request handlers for shortening, expanding, retrieving, and deleting URLs,
+// as well as health checks and batch operations.
 package api
 
 import (
@@ -33,6 +36,12 @@ func NewURLHandler(shortener service.Shortener, config *config.Config, logger lo
 	}
 }
 
+func (h *URLHandler) closeBody(r *http.Request) {
+	if err := r.Body.Close(); err != nil {
+		h.logger.Errorf("failed to close request body: %v", err)
+	}
+}
+
 // ShortenURL handles plain text POST requests to shorten a URL.
 // It expects the URL in the request body and returns the shortened URL as plain text.
 func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +52,7 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer h.closeBody(r)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w)
@@ -85,7 +94,7 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req models.ShortenRequest
-	defer r.Body.Close()
+	defer h.closeBody(r)
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		writeError(w)
@@ -129,7 +138,7 @@ func (h *URLHandler) ShortenBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req models.BatchRequest
-	defer r.Body.Close()
+	defer h.closeBody(r)
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		writeError(w)
@@ -230,7 +239,7 @@ func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var shortURLs []string
-	defer r.Body.Close()
+	defer h.closeBody(r)
 	err := json.NewDecoder(r.Body).Decode(&shortURLs)
 	if err != nil {
 		writeError(w)

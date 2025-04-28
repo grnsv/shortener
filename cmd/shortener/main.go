@@ -12,28 +12,30 @@ import (
 	"github.com/grnsv/shortener/internal/storage"
 )
 
+//go:generate go mod tidy
+
 func main() {
 	cfg := config.Parse()
 	log, err := logger.New(cfg.AppEnv)
-	if err != nil {
-		fatal(err)
-	}
-	defer log.Sync()
+	handleError(err)
+	defer must(log.Sync)
 
 	storage, err := storage.New(context.Background(), cfg)
-	if err != nil {
-		fatal(err)
-	}
-	defer storage.Close()
+	handleError(err)
+	defer must(storage.Close)
 
 	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 	handler := api.NewURLHandler(shortener, cfg, log)
 	r := api.NewRouter(handler, cfg, log)
-	if err := http.ListenAndServe(cfg.ServerAddress.String(), r); err != nil {
-		fatal(err)
-	}
+	handleError(http.ListenAndServe(cfg.ServerAddress.String(), r))
 }
 
-func fatal(err error) {
-	log.Fatalf("Server failed: %v", err)
+func must(fn func() error) {
+	handleError(fn())
+}
+
+func handleError(err error) {
+	if err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }

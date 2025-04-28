@@ -17,21 +17,34 @@ func BenchmarkService(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer log.Sync()
+	defer func() {
+		err = log.Sync()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}()
 
 	storage, err := storage.New(context.Background(), cfg)
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer storage.Close()
+	defer func() {
+		err = storage.Close()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}()
 
 	shortener := NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
 
 	b.ResetTimer()
 
 	b.Run("ExpandURL", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			shortener.ExpandURL(context.Background(), "kv430TPx")
+		for b.Loop() {
+			_, err := shortener.ExpandURL(context.Background(), "kv430TPx")
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }

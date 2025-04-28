@@ -61,19 +61,19 @@ func TestBaseURISetAndString(t *testing.T) {
 }
 
 func TestParseEnvVariables(t *testing.T) {
-	os.Setenv("APP_ENV", "envtest")
-	os.Setenv("JWT_SECRET", "envsecret")
-	os.Setenv("SERVER_ADDRESS", "127.0.0.1:9000")
-	os.Setenv("BASE_URL", "https://env.com:443")
-	os.Setenv("FILE_STORAGE_PATH", "/tmp/testdata")
-	os.Setenv("DATABASE_DSN", "postgresql://user:password@localhost:5432/dbname?sslmode=disable")
+	assert.NoError(t, os.Setenv("APP_ENV", "envtest"))
+	assert.NoError(t, os.Setenv("JWT_SECRET", "envsecret"))
+	assert.NoError(t, os.Setenv("SERVER_ADDRESS", "127.0.0.1:9000"))
+	assert.NoError(t, os.Setenv("BASE_URL", "https://env.com:443"))
+	assert.NoError(t, os.Setenv("FILE_STORAGE_PATH", "/tmp/testdata"))
+	assert.NoError(t, os.Setenv("DATABASE_DSN", "postgresql://user:password@localhost:5432/dbname?sslmode=disable"))
 	defer func() {
-		os.Unsetenv("APP_ENV")
-		os.Unsetenv("JWT_SECRET")
-		os.Unsetenv("SERVER_ADDRESS")
-		os.Unsetenv("BASE_URL")
-		os.Unsetenv("FILE_STORAGE_PATH")
-		os.Unsetenv("DATABASE_DSN")
+		assert.NoError(t, os.Unsetenv("APP_ENV"))
+		assert.NoError(t, os.Unsetenv("JWT_SECRET"))
+		assert.NoError(t, os.Unsetenv("SERVER_ADDRESS"))
+		assert.NoError(t, os.Unsetenv("BASE_URL"))
+		assert.NoError(t, os.Unsetenv("FILE_STORAGE_PATH"))
+		assert.NoError(t, os.Unsetenv("DATABASE_DSN"))
 	}()
 
 	cfg := Parse()
