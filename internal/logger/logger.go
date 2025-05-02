@@ -9,6 +9,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate go tool mockgen -destination=../mocks/mock_logger.go -package=mocks github.com/grnsv/shortener/internal/logger Logger
+
 // Logger defines a generic logging interface with methods for various
 // log levels and line-ending variants, as well as a Sync method to flush logs.
 type Logger interface {
@@ -26,7 +28,7 @@ type Logger interface {
 	Errorf(template string, args ...interface{})
 	// DPanicf(template string, args ...interface{})
 	// Panicf(template string, args ...interface{})
-	// Fatalf(template string, args ...interface{})
+	Fatalf(template string, args ...interface{})
 
 	// Debugln(args ...interface{})
 	Infoln(args ...interface{})

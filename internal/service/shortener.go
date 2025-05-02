@@ -11,6 +11,8 @@ import (
 	"github.com/grnsv/shortener/internal/storage"
 )
 
+//go:generate go tool mockgen -destination=../mocks/mock_shortener.go -package=mocks github.com/grnsv/shortener/internal/service Shortener
+
 const shortURLLength = 8
 
 // Shortener aggregates all URL shortening and management interfaces.

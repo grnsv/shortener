@@ -120,8 +120,6 @@ import (
 	"honnef.co/go/tools/stylecheck"
 )
 
-//go:generate go mod tidy
-
 // Config — configuration file name.
 const Config = `config.json`
 

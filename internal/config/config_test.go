@@ -76,7 +76,8 @@ func TestParseEnvVariables(t *testing.T) {
 		assert.NoError(t, os.Unsetenv("DATABASE_DSN"))
 	}()
 
-	cfg := Parse()
+	cfg, err := Parse()
+	assert.NoError(t, err)
 	assert.Equal(t, "envtest", cfg.AppEnv)
 	assert.Equal(t, "envsecret", cfg.JWTSecret)
 	assert.Equal(t, NetAddress{"127.0.0.1", 9000}, cfg.ServerAddress)

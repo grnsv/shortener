@@ -1,26 +1,31 @@
 #!/bin/bash
 
-export PATH=$PATH:$GOPATH/bin
+set -e
 
-mockgen -destination=internal/mocks/mock_logger.go -package=mocks github.com/grnsv/shortener/internal/logger Logger
-mockgen -destination=internal/mocks/mock_shortener.go -package=mocks github.com/grnsv/shortener/internal/service Shortener #,URLShortener,BatchShortener,URLExpander,StoragePinger,URLLister,URLDeleter
-mockgen -destination=internal/mocks/mock_storage.go -package=mocks github.com/grnsv/shortener/internal/storage Storage,DB,Stmt #,Saver,Retriever,Deleter,Pinger,Closer
+VERSION='1.0.0'
+COMMIT=$(git rev-parse --short HEAD)
+DATE=$(date +%Y-%m-%d)
+PKGS=$(go list ./... | grep -v /vendor/)
 
 go mod tidy
-go generate ./...
-go vet $(go list ./... | grep -v /vendor/)
-go fmt $(go list ./... | grep -v /vendor/)
-go test -coverprofile=coverage.out -race $(go list ./... | grep -v /vendor/)
+go generate $PKGS
+go vet $PKGS
+go fmt $PKGS
+go test -coverprofile=coverage.out -race $PKGS
 go tool cover -func=coverage.out | grep total # 🤷‍♂️
 
 cd cmd/shortener
-go build
+go build -ldflags "\
+    -X 'main.buildVersion=${VERSION}' \
+    -X 'main.buildDate=${DATE}' \
+    -X 'main.buildCommit=${COMMIT}'" \
+    .
 cd ../..
 
 cd cmd/staticlint
 go build
 cd ../..
 
-./cmd/staticlint/staticlint $(go list ./... | grep -v /vendor/)
+./cmd/staticlint/staticlint $PKGS
 
 docker compose up -d db

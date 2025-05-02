@@ -9,6 +9,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+//go:generate go tool mockgen -destination=../mocks/mock_storage.go -package=mocks github.com/grnsv/shortener/internal/storage Storage,DB,Stmt
+
 // Storage is the main interface that combines Saver, Retriever, Deleter, Pinger, and Closer interfaces.
 type Storage interface {
 	Saver
