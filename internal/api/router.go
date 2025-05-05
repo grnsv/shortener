@@ -28,7 +28,7 @@ func NewRouter(h *URLHandler, config *config.Config, logger logger.Logger) chi.R
 
 	r.Use(
 		middleware.WithLogging(logger),
-		middleware.WithCompressing,
+		middleware.WithCompressing(logger),
 		middleware.Authenticate(config.JWTSecret, logger),
 	)
 

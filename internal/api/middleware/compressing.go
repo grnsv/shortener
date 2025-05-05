@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/grnsv/shortener/internal/logger"
 )
 
 var supportedContentTypes = [2]string{"application/json", "text/html"}
@@ -89,26 +91,37 @@ func (c *compressReader) Close() error {
 }
 
 // WithCompressing is a middleware that handles gzip compression and decompression for supported requests and responses.
-func WithCompressing(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func WithCompressing(logger logger.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-			cr, err := newCompressReader(r.Body)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+			if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+				cr, err := newCompressReader(r.Body)
+				if err != nil {
+					logger.Errorf("failed to create gzip reader for request: %v", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				r.Body = cr
+				defer func() {
+					if err := cr.Close(); err != nil {
+						logger.Errorf("failed to close gzip reader for request: %v", err)
+					}
+				}()
 			}
-			r.Body = cr
-			defer cr.Close()
-		}
 
-		ow := w
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && isSupportedContentType(r.Header.Get("Content-Type")) {
-			cw := newCompressWriter(w)
-			ow = cw
-			defer cw.Close()
-		}
+			ow := w
+			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && isSupportedContentType(r.Header.Get("Content-Type")) {
+				cw := newCompressWriter(w)
+				ow = cw
+				defer func() {
+					if err := cw.Close(); err != nil {
+						logger.Errorf("failed to close gzip writer for response: %v", err)
+					}
+				}()
+			}
 
-		next.ServeHTTP(ow, r)
-	})
+			next.ServeHTTP(ow, r)
+		})
+	}
 }

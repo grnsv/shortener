@@ -26,6 +26,14 @@ func TestApi(t *testing.T) {
 	RunSpecs(t, "Api Suite")
 }
 
+func must(fn func() error) {
+	handleError(fn())
+}
+
+func handleError(err error) {
+	Expect(err).NotTo(HaveOccurred())
+}
+
 var _ = Describe("PingDB Handler", func() {
 	var (
 		ctrl          *gomock.Controller
@@ -57,8 +65,8 @@ var _ = Describe("PingDB Handler", func() {
 			mockShortener.EXPECT().PingStorage(gomock.Any()).Return(nil)
 
 			resp, err := http.Get(ts.URL + "/ping")
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 		})
@@ -69,8 +77,8 @@ var _ = Describe("PingDB Handler", func() {
 			mockShortener.EXPECT().PingStorage(gomock.Any()).Return(errors.New("connection failed"))
 
 			resp, err := http.Get(ts.URL + "/ping")
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusInternalServerError))
 		})
@@ -108,8 +116,8 @@ var _ = Describe("Authenticate", func() {
 			mockShortener.EXPECT().PingStorage(gomock.Any()).Return(nil)
 
 			resp, err := http.Get(ts.URL + "/ping")
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
@@ -130,11 +138,11 @@ var _ = Describe("Authenticate", func() {
 			mockShortener.EXPECT().PingStorage(gomock.Any()).Return(nil)
 
 			req, err := http.NewRequest("GET", ts.URL+"/ping", nil)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(&http.Cookie{Name: "token", Value: "invalid"})
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
@@ -155,11 +163,11 @@ var _ = Describe("Authenticate", func() {
 			mockShortener.EXPECT().PingStorage(gomock.Any()).Return(nil)
 
 			req, err := http.NewRequest("GET", ts.URL+"/ping", nil)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(&http.Cookie{Name: "token", Value: ""})
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
@@ -178,13 +186,13 @@ var _ = Describe("Authenticate", func() {
 	Context("when request has empty user ID", func() {
 		It("returns status 401 Unauthorized", func() {
 			req, err := http.NewRequest("GET", ts.URL+"/ping", nil)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", "")
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 		})
@@ -223,13 +231,13 @@ var _ = Describe("GetURLs", func() {
 			mockShortener.EXPECT().GetAll(gomock.Any(), userID).Return(nil, nil)
 
 			req, err := http.NewRequest("GET", ts.URL+"/api/user/urls", nil)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", userID)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
 		})
@@ -252,20 +260,20 @@ var _ = Describe("GetURLs", func() {
 			mockShortener.EXPECT().GetAll(gomock.Any(), userID).Return(urls, nil)
 
 			req, err := http.NewRequest("GET", ts.URL+"/api/user/urls", nil)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", userID)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			Expect(resp.Header.Get("Content-Type")).To(Equal("application/json"))
 
 			var responseURLs []models.URL
 			err = json.NewDecoder(resp.Body).Decode(&responseURLs)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			Expect(len(urls)).To(Equal(len(responseURLs)))
 		})
 	})
@@ -311,21 +319,21 @@ var _ = Describe("ShortenBatch", func() {
 			mockShortener.EXPECT().ShortenBatch(gomock.Any(), batchReq, userID).Return(batchResp, nil)
 
 			body, err := json.Marshal(batchReq)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req, err := http.NewRequest("POST", ts.URL+"/api/shorten/batch", bytes.NewReader(body))
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", userID)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			req.Header.Set("Content-Type", "application/json")
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 			var got models.BatchResponse
 			err = json.NewDecoder(resp.Body).Decode(&got)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			Expect(got).To(Equal(batchResp))
 		})
 	})
@@ -334,14 +342,14 @@ var _ = Describe("ShortenBatch", func() {
 		It("returns status 400 BadRequest", func() {
 			body := []byte(`invalid json`)
 			req, err := http.NewRequest("POST", ts.URL+"/api/shorten/batch", bytes.NewReader(body))
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", userID)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			req.Header.Set("Content-Type", "application/json")
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 		})
@@ -382,14 +390,14 @@ var _ = Describe("DeleteURLs", func() {
 
 			body, _ := json.Marshal(shortURLs)
 			req, err := http.NewRequest("DELETE", ts.URL+"/api/user/urls", bytes.NewReader(body))
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", userID)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			req.Header.Set("Content-Type", "application/json")
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusAccepted))
 		})
@@ -399,14 +407,14 @@ var _ = Describe("DeleteURLs", func() {
 		It("returns status 400 BadRequest", func() {
 			body := []byte(`invalid json`)
 			req, err := http.NewRequest("DELETE", ts.URL+"/api/user/urls", bytes.NewReader(body))
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			cookie, err := middleware.BuildAuthCookie("secret", userID)
-			Expect(err).NotTo(HaveOccurred())
+			handleError(err)
 			req.AddCookie(cookie)
 			req.Header.Set("Content-Type", "application/json")
 			resp, err := http.DefaultClient.Do(req)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
+			handleError(err)
+			defer must(resp.Body.Close)
 
 			Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 		})

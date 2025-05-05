@@ -19,12 +19,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func requireNoError(t *testing.T, fn func() error, msgAndArgs ...any) {
+	require.NoError(t, fn(), msgAndArgs...)
+}
+
+func closeBody(t *testing.T, r *http.Response, msgAndArgs ...any) {
+	require.NoError(t, r.Body.Close(), msgAndArgs...)
+}
+
 func TestHandleShortenURL(t *testing.T) {
 	storage, err := storage.NewMemoryStorage(context.Background())
-	defer func() {
-		err = storage.Close()
-		require.NoError(t, err)
-	}()
+	defer requireNoError(t, storage.Close)
 	require.NoError(t, err)
 	cfg := config.New(
 		config.WithAppEnv("testing"),
@@ -97,10 +102,10 @@ func TestHandleShortenURL(t *testing.T) {
 
 		res, err := ts.Client().Do(request)
 		require.NoError(t, err, tt.name)
+		defer closeBody(t, res, tt.name)
 
 		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
 		if tt.want.body != "" {
-			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)
 
 			require.NoError(t, err, tt.name)
@@ -113,10 +118,7 @@ func TestHandleShortenURL(t *testing.T) {
 
 func TestHandleExpandURL(t *testing.T) {
 	storage, err := storage.NewMemoryStorage(context.Background())
-	defer func() {
-		err = storage.Close()
-		require.NoError(t, err)
-	}()
+	defer requireNoError(t, storage.Close)
 	require.NoError(t, err)
 	cfg := config.New(
 		config.WithAppEnv("testing"),
@@ -142,8 +144,8 @@ func TestHandleExpandURL(t *testing.T) {
 
 	res, err := client.Do(request)
 	require.NoError(t, err)
+	defer closeBody(t, res)
 
-	defer res.Body.Close()
 	resBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 	shorten := strings.Split(string(resBody), cfg.BaseAddress.String())[1]
@@ -209,7 +211,7 @@ func TestHandleExpandURL(t *testing.T) {
 
 		res, err := client.Do(request)
 		require.NoError(t, err, tt.name)
-		defer res.Body.Close()
+		defer closeBody(t, res, tt.name)
 
 		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
 		assert.Equal(t, tt.want.location, res.Header.Get("Location"), tt.name)
@@ -218,10 +220,7 @@ func TestHandleExpandURL(t *testing.T) {
 
 func TestHandleShortenURLJSON(t *testing.T) {
 	storage, err := storage.NewMemoryStorage(context.Background())
-	defer func() {
-		err = storage.Close()
-		require.NoError(t, err)
-	}()
+	defer requireNoError(t, storage.Close)
 	require.NoError(t, err)
 	cfg := config.New(
 		config.WithAppEnv("testing"),
@@ -301,11 +300,11 @@ func TestHandleShortenURLJSON(t *testing.T) {
 
 		res, err := ts.Client().Do(request)
 		require.NoError(t, err, tt.name)
+		defer closeBody(t, res, tt.name)
 
 		assert.Equal(t, tt.want.statusCode, res.StatusCode, tt.name)
 		if tt.want.body.Result != "" {
 			var resp models.ShortenResponse
-			defer res.Body.Close()
 			err = json.NewDecoder(res.Body).Decode(&resp)
 
 			require.NoError(t, err, tt.name)

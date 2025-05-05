@@ -28,7 +28,8 @@ func TestWithLogging(t *testing.T) {
 
 	handler := WithLogging(mockLogger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, err := w.Write([]byte("OK"))
+		assert.NoError(t, err)
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -42,9 +43,14 @@ func TestWithLogging(t *testing.T) {
 
 func TestWithCompressing(t *testing.T) {
 	t.Run("gzip supported and content-type supported", func(t *testing.T) {
-		handler := WithCompressing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLogger(ctrl)
+		handler := WithCompressing(mockLogger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			_, err := w.Write([]byte("OK"))
+			assert.NoError(t, err)
 		}))
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -58,14 +64,19 @@ func TestWithCompressing(t *testing.T) {
 			decompressed, err := io.ReadAll(gz)
 			assert.NoError(t, err)
 			assert.Equal(t, "OK", string(decompressed))
-			gz.Close()
+			assert.NoError(t, gz.Close())
 		}
 	})
 
 	t.Run("gzip supported but content-type not supported", func(t *testing.T) {
-		handler := WithCompressing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLogger(ctrl)
+		handler := WithCompressing(mockLogger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			_, err := w.Write([]byte("OK"))
+			assert.NoError(t, err)
 		}))
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -78,9 +89,14 @@ func TestWithCompressing(t *testing.T) {
 	})
 
 	t.Run("gzip not supported", func(t *testing.T) {
-		handler := WithCompressing(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockLogger := mocks.NewMockLogger(ctrl)
+		handler := WithCompressing(mockLogger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
+			_, err := w.Write([]byte("OK"))
+			assert.NoError(t, err)
 		}))
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		req.Header.Set("Content-Type", "text/html")
@@ -106,7 +122,8 @@ func TestAuthenticate(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(userID))
+		_, err := w.Write([]byte(userID))
+		assert.NoError(t, err)
 	})
 
 	middleware := Authenticate(secret, mockLogger)
@@ -119,7 +136,10 @@ func TestAuthenticate(t *testing.T) {
 		wrapped.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		resp := rec.Result()
-		defer resp.Body.Close()
+		defer func() {
+			assert.NoError(t, resp.Body.Close())
+		}()
+
 		cookie := resp.Cookies()
 		found := false
 		for _, c := range cookie {
@@ -143,7 +163,10 @@ func TestAuthenticate(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Contains(t, rec.Body.String(), userID)
 		resp := rec.Result()
-		defer resp.Body.Close()
+		defer func() {
+			assert.NoError(t, resp.Body.Close())
+		}()
+
 		// Should refresh token
 		updated := false
 		for _, c := range resp.Cookies() {
@@ -163,7 +186,10 @@ func TestAuthenticate(t *testing.T) {
 		wrapped.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		resp := rec.Result()
-		defer resp.Body.Close()
+		defer func() {
+			assert.NoError(t, resp.Body.Close())
+		}()
+
 		cookie := resp.Cookies()
 		found := false
 		for _, c := range cookie {

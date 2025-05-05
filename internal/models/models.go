@@ -1,3 +1,6 @@
+// Package models contains data structures used throughout the URL shortener service.
+// It defines request and response types for API endpoints, as well as internal representations
+// of URLs and batch operations.
 package models
 
 // ShortenRequest represents a request to shorten a URL.

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -159,7 +158,7 @@ var config = &Config{
 }
 
 // Parse loads configuration from flags and environment variables and returns a Config pointer.
-func Parse() *Config {
+func Parse() (*Config, error) {
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
 	flag.StringVar(&config.FileStoragePath, "f", config.FileStoragePath, "File storage path (/data/storage)")
@@ -168,8 +167,8 @@ func Parse() *Config {
 
 	err := env.Parse(config)
 	if err != nil {
-		log.Fatalf("Failed to parse env: %v", err)
+		return nil, fmt.Errorf("failed to parse env: %w", err)
 	}
 
-	return config
+	return config, nil
 }
