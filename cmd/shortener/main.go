@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -38,44 +39,24 @@ type application struct {
 	Router    http.Handler
 }
 
-func newApplication(ctx context.Context) *application {
+func newApplication(ctx context.Context) (*application, error) {
 	var app application
+	var err error
 
-	app.initConfig()
-	app.initLogger()
-	app.initStorage(ctx)
-	app.initService()
+	if app.Config, err = config.Parse(); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+	if app.Logger, err = logger.New(app.Config.AppEnv); err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+	if app.Storage, err = storage.New(ctx, app.Config); err != nil {
+		return nil, fmt.Errorf("failed to create storage: %w", err)
+	}
+
+	app.Shortener = service.NewShortener(app.Storage, app.Storage, app.Storage, app.Storage, app.Config.BaseAddress.String())
 	app.initHandlers()
 
-	return &app
-}
-
-func (app *application) initConfig() {
-	var err error
-	app.Config, err = config.Parse()
-	if err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
-	}
-}
-
-func (app *application) initLogger() {
-	var err error
-	app.Logger, err = logger.New(app.Config.AppEnv)
-	if err != nil {
-		log.Fatalf("Failed to create logger: %v", err)
-	}
-}
-
-func (app *application) initStorage(ctx context.Context) {
-	var err error
-	app.Storage, err = storage.New(ctx, app.Config)
-	if err != nil {
-		app.Logger.Fatalf("Failed to create storage: %v", err)
-	}
-}
-
-func (app *application) initService() {
-	app.Shortener = service.NewShortener(app.Storage, app.Storage, app.Storage, app.Storage, app.Config.BaseAddress.String())
+	return &app, nil
 }
 
 func (app *application) initHandlers() {
@@ -86,7 +67,14 @@ func (app *application) initHandlers() {
 // Run starts the HTTP server using the application's configuration.
 // It blocks until the server exits or fails.
 func (app *application) Run() {
-	if err := http.ListenAndServe(app.Config.ServerAddress.String(), app.Router); err != nil {
+	var err error
+	if app.Config.EnableHTTPS {
+		err = http.ListenAndServeTLS(app.Config.ServerAddress.String(), app.Config.CertFile, app.Config.KeyFile, app.Router)
+	} else {
+		err = http.ListenAndServe(app.Config.ServerAddress.String(), app.Router)
+	}
+
+	if err != nil {
 		app.Logger.Fatalf("Server failed: %v", err)
 	}
 }
@@ -104,7 +92,10 @@ func (app *application) Close() {
 
 func main() {
 	printBuildInfo()
-	app := newApplication(context.Background())
+	app, err := newApplication(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to create application: %v", err)
+	}
 	defer app.Close()
 
 	app.Run()

@@ -21,6 +21,9 @@ type Config struct {
 	BaseAddress     BaseURI    `env:"BASE_URL"`          // Base URL for shortened links
 	FileStoragePath string     `env:"FILE_STORAGE_PATH"` // Path to file storage
 	DatabaseDSN     string     `env:"DATABASE_DSN"`      // Database connection string
+	EnableHTTPS     bool       `env:"ENABLE_HTTPS"`      // Enable HTTPS flag
+	CertFile        string     `env:"KEY_FILE"`          // Cert file
+	KeyFile         string     `env:"CERT_FILE"`         // Key file
 }
 
 // NetAddress represents a network address with a host and port.
@@ -155,6 +158,8 @@ var config = &Config{
 	BaseAddress:     BaseURI{"http://", NetAddress{"localhost", 8080}},
 	FileStoragePath: "",
 	DatabaseDSN:     "",
+	CertFile:        "../../certs/cert.pem",
+	KeyFile:         "../../certs/key.pem",
 }
 
 // Parse loads configuration from flags and environment variables and returns a Config pointer.
@@ -162,7 +167,8 @@ func Parse() (*Config, error) {
 	flag.Var(&config.ServerAddress, "a", "Address for server")
 	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
 	flag.StringVar(&config.FileStoragePath, "f", config.FileStoragePath, "File storage path (/data/storage)")
-	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable")
+	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable)")
+	flag.BoolVar(&config.EnableHTTPS, "s", config.EnableHTTPS, "Enable HTTPS")
 	flag.Parse()
 
 	err := env.Parse(config)
