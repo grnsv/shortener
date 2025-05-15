@@ -28,9 +28,9 @@ func exampleHandler() (*api.URLHandler, *config.Config) {
 	cfg := config.New(
 		config.WithAppEnv("testing"),
 		config.WithServerAddress(config.NetAddress{Host: "localhost", Port: 8080}),
-		config.WithBaseAddress(config.BaseURI{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
+		config.WithBaseURL(config.BaseURL{Scheme: "http://", Address: config.NetAddress{Host: "localhost", Port: 8080}}),
 	)
-	shortener := service.NewShortener(mem, mem, mem, mem, cfg.BaseAddress.String())
+	shortener := service.NewShortener(mem, mem, mem, mem, cfg.BaseURL.String())
 	log, _ := logger.New("testing")
 
 	return api.NewURLHandler(shortener, cfg, log), cfg

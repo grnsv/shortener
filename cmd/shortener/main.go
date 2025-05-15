@@ -53,7 +53,7 @@ func newApplication(ctx context.Context) (*application, error) {
 		return nil, fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	app.Shortener = service.NewShortener(app.Storage, app.Storage, app.Storage, app.Storage, app.Config.BaseAddress.String())
+	app.Shortener = service.NewShortener(app.Storage, app.Storage, app.Storage, app.Storage, app.Config.BaseURL.String())
 	app.initHandlers()
 
 	return &app, nil

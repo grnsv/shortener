@@ -3,10 +3,12 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -15,15 +17,16 @@ import (
 
 // Config holds the application configuration loaded from environment variables and flags.
 type Config struct {
-	AppEnv          string     `env:"APP_ENV"`           // Application environment (e.g., local, production)
-	JWTSecret       string     `env:"JWT_SECRET"`        // Secret key for JWT authentication
-	ServerAddress   NetAddress `env:"SERVER_ADDRESS"`    // Address for the HTTP server
-	BaseAddress     BaseURI    `env:"BASE_URL"`          // Base URL for shortened links
-	FileStoragePath string     `env:"FILE_STORAGE_PATH"` // Path to file storage
-	DatabaseDSN     string     `env:"DATABASE_DSN"`      // Database connection string
-	EnableHTTPS     bool       `env:"ENABLE_HTTPS"`      // Enable HTTPS flag
-	CertFile        string     `env:"KEY_FILE"`          // Cert file
-	KeyFile         string     `env:"CERT_FILE"`         // Key file
+	AppEnv          string     `env:"APP_ENV" json:"app_env"`                     // Application environment (e.g., local, production)
+	JWTSecret       string     `env:"JWT_SECRET" json:"jwt_secret"`               // Secret key for JWT authentication
+	ServerAddress   NetAddress `env:"SERVER_ADDRESS" json:"server_address"`       // Address for the HTTP server
+	BaseURL         BaseURL    `env:"BASE_URL" json:"base_url"`                   // Base URL for shortened links
+	FileStoragePath string     `env:"FILE_STORAGE_PATH" json:"file_storage_path"` // Path to file storage
+	DatabaseDSN     string     `env:"DATABASE_DSN" json:"database_dsn"`           // Database connection string
+	EnableHTTPS     bool       `env:"ENABLE_HTTPS" json:"enable_https"`           // Enable HTTPS flag
+	CertFile        string     `env:"CERT_FILE" json:"cert_file"`                 // Cert file
+	KeyFile         string     `env:"KEY_FILE" json:"key_file"`                   // Key file
+	Config          string     `env:"CONFIG"`                                     // Config file
 }
 
 // NetAddress represents a network address with a host and port.
@@ -70,27 +73,27 @@ func (a *NetAddress) UnmarshalText(text []byte) error {
 	return a.Set(string(text))
 }
 
-// BaseURI represents a base URI (scheme + host:port).
-type BaseURI struct {
-	Scheme  string     // URI scheme (e.g., "http://", "https://").
+// BaseURL represents a base URL (scheme + host:port).
+type BaseURL struct {
+	Scheme  string     // URL scheme (e.g., "http://", "https://").
 	Address NetAddress // NetAddress struct.
 }
 
-// String returns the BaseURI as "scheme+host:port".
+// String returns the BaseURL as "scheme+host:port".
 // It implements the flag.Value interface, allowing it to be used as a command-line flag.
-func (b BaseURI) String() string {
+func (b BaseURL) String() string {
 	return b.Scheme + b.Address.String()
 }
 
-// Set parses and sets the BaseURI from a "scheme+host:port" string.
+// Set parses and sets the BaseURL from a "scheme+host:port" string.
 // It implements the flag.Value interface, allowing it to be used as a command-line flag.
-func (b *BaseURI) Set(s string) error {
+func (b *BaseURL) Set(s string) error {
 	if strings.HasPrefix(s, "http://") {
 		b.Scheme = "http://"
 	} else if strings.HasPrefix(s, "https://") {
 		b.Scheme = "https://"
 	} else {
-		return errors.New(`URI scheme must be "http://" or "https://"`)
+		return errors.New(`URL scheme must be "http://" or "https://"`)
 	}
 	err := b.Address.Set(strings.TrimPrefix(s, b.Scheme))
 	if err != nil {
@@ -99,9 +102,9 @@ func (b *BaseURI) Set(s string) error {
 	return nil
 }
 
-// UnmarshalText parses the BaseURI from text.
+// UnmarshalText parses the BaseURL from text.
 // It implements the encoding.TextUnmarshaler interface, allowing it to be used as an environment variable.
-func (b *BaseURI) UnmarshalText(text []byte) error {
+func (b *BaseURL) UnmarshalText(text []byte) error {
 	return b.Set(string(text))
 }
 
@@ -129,10 +132,10 @@ func WithServerAddress(addr NetAddress) Option {
 	}
 }
 
-// WithBaseAddress sets the base address in the Config.
-func WithBaseAddress(url BaseURI) Option {
+// WithBaseURL sets the base address in the Config.
+func WithBaseURL(url BaseURL) Option {
 	return func(c *Config) {
-		c.BaseAddress = url
+		c.BaseURL = url
 	}
 }
 
@@ -155,26 +158,58 @@ var config = &Config{
 	AppEnv:          "local",
 	JWTSecret:       "secret",
 	ServerAddress:   NetAddress{"localhost", 8080},
-	BaseAddress:     BaseURI{"http://", NetAddress{"localhost", 8080}},
+	BaseURL:         BaseURL{"http://", NetAddress{"localhost", 8080}},
 	FileStoragePath: "",
 	DatabaseDSN:     "",
 	CertFile:        "../../certs/cert.pem",
 	KeyFile:         "../../certs/key.pem",
 }
 
+func parseFlags() error {
+	set := flag.NewFlagSet("set", flag.ExitOnError)
+	set.Var(&config.ServerAddress, "a", "Address for server")
+	set.Var(&config.BaseURL, "b", "Base URL for shorten url")
+	set.StringVar(&config.FileStoragePath, "f", config.FileStoragePath, "File storage path (/data/storage)")
+	set.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable)")
+	set.BoolVar(&config.EnableHTTPS, "s", config.EnableHTTPS, "Enable HTTPS")
+	set.StringVar(&config.Config, "c", config.Config, "Config file")
+	set.StringVar(&config.Config, "config", config.Config, "Config file")
+	return set.Parse(os.Args[1:])
+}
+
 // Parse loads configuration from flags and environment variables and returns a Config pointer.
 func Parse() (*Config, error) {
-	flag.Var(&config.ServerAddress, "a", "Address for server")
-	flag.Var(&config.BaseAddress, "b", "Base address for shorten url")
-	flag.StringVar(&config.FileStoragePath, "f", config.FileStoragePath, "File storage path (/data/storage)")
-	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN (postgresql://user:password@host:port/dbname?sslmode=disable)")
-	flag.BoolVar(&config.EnableHTTPS, "s", config.EnableHTTPS, "Enable HTTPS")
-	flag.Parse()
-
-	err := env.Parse(config)
+	err := loadConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config file: %w", err)
+	}
+	err = parseFlags()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse flags: %w", err)
+	}
+	err = env.Parse(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse env: %w", err)
 	}
-
 	return config, nil
+}
+
+func loadConfigFile() (err error) {
+	err = findConfigFile()
+	if err != nil || config.Config == "" {
+		return
+	}
+	f, err := os.Open(config.Config)
+	if err != nil {
+		return
+	}
+	return json.NewDecoder(f).Decode(config)
+}
+
+func findConfigFile() error {
+	config.Config = os.Getenv("CONFIG")
+	if config.Config != "" {
+		return nil
+	}
+	return parseFlags()
 }

@@ -57,11 +57,11 @@ type URLDeleter interface {
 
 // Service implements the Shortener interface and provides URL shortening services.
 type Service struct {
-	saver       storage.Saver
-	retriever   storage.Retriever
-	deleter     storage.Deleter
-	pinger      storage.Pinger
-	baseAddress string
+	saver     storage.Saver
+	retriever storage.Retriever
+	deleter   storage.Deleter
+	pinger    storage.Pinger
+	BaseURL   string
 }
 
 // NewShortener creates a new Service implementing the Shortener interface.
@@ -70,14 +70,14 @@ func NewShortener(
 	retriever storage.Retriever,
 	deleter storage.Deleter,
 	pinger storage.Pinger,
-	baseAddress string,
+	BaseURL string,
 ) Shortener {
 	return &Service{
-		saver:       saver,
-		retriever:   retriever,
-		deleter:     deleter,
-		pinger:      pinger,
-		baseAddress: baseAddress,
+		saver:     saver,
+		retriever: retriever,
+		deleter:   deleter,
+		pinger:    pinger,
+		BaseURL:   BaseURL,
 	}
 }
 
@@ -97,13 +97,13 @@ func (s *Service) ShortenURL(ctx context.Context, url string, userID string) (st
 	err := s.saver.Save(ctx, model)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
-			return s.baseAddress + "/" + model.ShortURL, err
+			return s.BaseURL + "/" + model.ShortURL, err
 		}
 
 		return "", err
 	}
 
-	return s.baseAddress + "/" + model.ShortURL, nil
+	return s.BaseURL + "/" + model.ShortURL, nil
 }
 
 // ShortenBatch shortens a batch of URLs for the specified user and returns the batch response.
@@ -117,7 +117,7 @@ func (s *Service) ShortenBatch(ctx context.Context, longs models.BatchRequest, u
 		urls[i] = url
 		shorts[i] = models.BatchResponseItem{
 			CorrelationID: long.CorrelationID,
-			ShortURL:      s.baseAddress + "/" + url.ShortURL,
+			ShortURL:      s.BaseURL + "/" + url.ShortURL,
 		}
 	}
 
@@ -147,7 +147,7 @@ func (s *Service) GetAll(ctx context.Context, userID string) ([]models.URL, erro
 	}
 
 	for i := range urls {
-		urls[i].ShortURL = s.baseAddress + "/" + urls[i].ShortURL
+		urls[i].ShortURL = s.BaseURL + "/" + urls[i].ShortURL
 	}
 
 	return urls, nil

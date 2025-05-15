@@ -29,3 +29,52 @@ cd ../..
 ./cmd/staticlint/staticlint $PKGS
 
 docker compose up -d db
+
+chmod +x shortenertestbeta
+source .env
+./shortenertestbeta -test.v -test.run=^TestIteration1$ \
+              -binary-path=cmd/shortener/shortener
+./shortenertestbeta -test.v -test.run=^TestIteration2$ -source-path=.
+./shortenertestbeta -test.v -test.run=^TestIteration3$ -source-path=.
+./shortenertestbeta -test.v -test.run=^TestIteration4$ \
+              -binary-path=cmd/shortener/shortener \
+              -server-port=12345
+./shortenertestbeta -test.v -test.run=^TestIteration5$ \
+              -binary-path=cmd/shortener/shortener \
+              -server-port=12345
+./shortenertestbeta -test.v -test.run=^TestIteration6$ \
+              -source-path=.
+./shortenertestbeta -test.v -test.run=^TestIteration7$ \
+              -binary-path=cmd/shortener/shortener \
+              -source-path=.
+./shortenertestbeta -test.v -test.run=^TestIteration8$ \
+              -binary-path=cmd/shortener/shortener
+./shortenertestbeta -test.v -test.run=^TestIteration9$ \
+              -binary-path=cmd/shortener/shortener \
+              -source-path=. \
+              -file-storage-path=/tmp/storage
+./shortenertestbeta -test.v -test.run=^TestIteration10$ \
+              -binary-path=cmd/shortener/shortener \
+              -source-path=. \
+              -database-dsn=$DATABASE_CONN_STRING
+./shortenertestbeta -test.v -test.run=^TestIteration11$ \
+              -binary-path=cmd/shortener/shortener \
+              -database-dsn=$DATABASE_CONN_STRING
+./shortenertestbeta -test.v -test.run=^TestIteration12$ \
+              -binary-path=cmd/shortener/shortener \
+              -database-dsn=$DATABASE_CONN_STRING
+./shortenertestbeta -test.v -test.run=^TestIteration13$ \
+              -binary-path=cmd/shortener/shortener \
+              -database-dsn=$DATABASE_CONN_STRING
+./shortenertestbeta -test.v -test.run=^TestIteration14$ \
+              -binary-path=cmd/shortener/shortener \
+              -database-dsn=$DATABASE_CONN_STRING
+./shortenertestbeta -test.v -test.run=^TestIteration15$ \
+              -binary-path=cmd/shortener/shortener \
+              -database-dsn=$DATABASE_CONN_STRING
+# ./shortenertestbeta -test.v -test.run=^TestIteration16$ \
+#               -source-path=.
+./shortenertestbeta -test.v -test.run=^TestIteration17$ \
+              -source-path=.
+./shortenertestbeta -test.v -test.run=^TestIteration18$ \
+              -source-path=.
