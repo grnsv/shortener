@@ -45,7 +45,7 @@ func BenchmarkApi(b *testing.B) {
 	handleError(b, err)
 	defer must(b, storage.Close)
 
-	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
+	shortener := service.NewShortener(storage, storage, storage, storage, cfg.BaseURL.String())
 	handler := NewURLHandler(shortener, cfg, log)
 	router := NewRouter(handler, cfg, log)
 	cookie, err := middleware.BuildAuthCookie(secret, userID)

@@ -12,7 +12,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, "local", cfg.AppEnv)
 	assert.Equal(t, "secret", cfg.JWTSecret)
 	assert.Equal(t, NetAddress{"localhost", 8080}, cfg.ServerAddress)
-	assert.Equal(t, BaseURI{"http://", NetAddress{"localhost", 8080}}, cfg.BaseAddress)
+	assert.Equal(t, BaseURL{"http://", NetAddress{"localhost", 8080}}, cfg.BaseURL)
 	assert.Equal(t, "", cfg.FileStoragePath)
 	assert.Equal(t, "", cfg.DatabaseDSN)
 }
@@ -22,13 +22,13 @@ func TestWithOptions(t *testing.T) {
 		WithAppEnv("testenv"),
 		WithJWTSecret("jwtkey"),
 		WithServerAddress(NetAddress{"127.0.0.1", 9090}),
-		WithBaseAddress(BaseURI{"https://", NetAddress{"test.com", 443}}),
+		WithBaseURL(BaseURL{"https://", NetAddress{"test.com", 443}}),
 		WithDatabaseDSN("postgresql://user:password@localhost:5432/dbname?sslmode=disable"),
 	)
 	assert.Equal(t, "testenv", cfg.AppEnv)
 	assert.Equal(t, "jwtkey", cfg.JWTSecret)
 	assert.Equal(t, NetAddress{"127.0.0.1", 9090}, cfg.ServerAddress)
-	assert.Equal(t, BaseURI{"https://", NetAddress{"test.com", 443}}, cfg.BaseAddress)
+	assert.Equal(t, BaseURL{"https://", NetAddress{"test.com", 443}}, cfg.BaseURL)
 	assert.Equal(t, "postgresql://user:password@localhost:5432/dbname?sslmode=disable", cfg.DatabaseDSN)
 }
 
@@ -49,11 +49,11 @@ func TestNetAddressSetAndString(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestBaseURISetAndString(t *testing.T) {
-	var uri BaseURI
+func TestBaseURLSetAndString(t *testing.T) {
+	var uri BaseURL
 	err := uri.Set("http://example.com:1234")
 	assert.NoError(t, err)
-	assert.Equal(t, BaseURI{"http://", NetAddress{"example.com", 1234}}, uri)
+	assert.Equal(t, BaseURL{"http://", NetAddress{"example.com", 1234}}, uri)
 	assert.Equal(t, "http://example.com:1234", uri.String())
 
 	err = uri.Set("ftp://example.com:21")
@@ -76,12 +76,16 @@ func TestParseEnvVariables(t *testing.T) {
 		assert.NoError(t, os.Unsetenv("DATABASE_DSN"))
 	}()
 
+	osArgs := os.Args
+	defer func() { os.Args = osArgs }()
+	os.Args = os.Args[:1]
+
 	cfg, err := Parse()
 	assert.NoError(t, err)
 	assert.Equal(t, "envtest", cfg.AppEnv)
 	assert.Equal(t, "envsecret", cfg.JWTSecret)
 	assert.Equal(t, NetAddress{"127.0.0.1", 9000}, cfg.ServerAddress)
-	assert.Equal(t, BaseURI{"https://", NetAddress{"env.com", 443}}, cfg.BaseAddress)
+	assert.Equal(t, BaseURL{"https://", NetAddress{"env.com", 443}}, cfg.BaseURL)
 	assert.Equal(t, "/tmp/testdata", cfg.FileStoragePath)
 	assert.Equal(t, "postgresql://user:password@localhost:5432/dbname?sslmode=disable", cfg.DatabaseDSN)
 }

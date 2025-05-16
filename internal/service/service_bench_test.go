@@ -35,7 +35,7 @@ func BenchmarkService(b *testing.B) {
 		}
 	}()
 
-	shortener := NewShortener(storage, storage, storage, storage, cfg.BaseAddress.String())
+	shortener := NewShortener(storage, storage, storage, storage, cfg.BaseURL.String())
 
 	b.ResetTimer()
 

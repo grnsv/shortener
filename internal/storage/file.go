@@ -67,6 +67,9 @@ func (s *FileStorage) loadFromFile(ctx context.Context) error {
 
 // Close closes the underlying file and memory storage.
 func (s *FileStorage) Close() error {
+	if err := s.writer.Flush(); err != nil {
+		return err
+	}
 	if err := s.memory.Close(); err != nil {
 		return err
 	}
