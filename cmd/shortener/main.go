@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/grnsv/shortener/internal/api"
 	"github.com/grnsv/shortener/internal/config"
@@ -37,6 +40,7 @@ type application struct {
 	Storage   storage.Storage
 	Shortener service.Shortener
 	Router    http.Handler
+	Server    *http.Server
 }
 
 func newApplication(ctx context.Context) (*application, error) {
@@ -55,6 +59,7 @@ func newApplication(ctx context.Context) (*application, error) {
 
 	app.Shortener = service.NewShortener(app.Storage, app.Storage, app.Storage, app.Storage, app.Config.BaseURL.String())
 	app.initHandlers()
+	app.initServer()
 
 	return &app, nil
 }
@@ -64,41 +69,78 @@ func (app *application) initHandlers() {
 	app.Router = api.NewRouter(handler, app.Config, app.Logger)
 }
 
+func (app *application) initServer() {
+	app.Server = &http.Server{
+		Addr:         app.Config.ServerAddress.String(),
+		Handler:      app.Router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+}
+
 // Run starts the HTTP server using the application's configuration.
 // It blocks until the server exits or fails.
-func (app *application) Run() {
+func (app *application) Run(ctx context.Context) {
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := app.Close(shutdownCtx); err != nil {
+			log.Printf("Graceful shutdown failed: %v", err)
+		} else {
+			log.Println("Server shutdown gracefully")
+		}
+	}()
+
 	var err error
 	if app.Config.EnableHTTPS {
-		err = http.ListenAndServeTLS(app.Config.ServerAddress.String(), app.Config.CertFile, app.Config.KeyFile, app.Router)
+		err = app.Server.ListenAndServeTLS(app.Config.CertFile, app.Config.KeyFile)
 	} else {
-		err = http.ListenAndServe(app.Config.ServerAddress.String(), app.Router)
+		err = app.Server.ListenAndServe()
 	}
 
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		app.Logger.Fatalf("Server failed: %v", err)
 	}
 }
 
-// Close gracefully shuts down the application's resources,
-// including storage and logger.
-func (app *application) Close() {
-	if err := app.Storage.Close(); err != nil {
-		app.Logger.Fatalf("Failed to close storage: %v", err)
+// Close gracefully shuts down the application's server, storage, and logger.
+func (app *application) Close(ctx context.Context) error {
+	if err := app.Server.Shutdown(ctx); err != nil {
+		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
-	if err := app.Logger.Sync(); err != nil {
-		log.Fatalf("Failed to sync logger: %v", err)
+	if err := app.Storage.Close(); err != nil {
+		return fmt.Errorf("failed to close storage: %w", err)
+	}
+	if err := app.Logger.Sync(); err != nil && err.Error() != "sync /dev/stderr: invalid argument" {
+		return fmt.Errorf("failed to sync logger: %w", err)
+	}
+
+	return nil
+}
+
+// MustClose calls Close and exits the application if an error occurs.
+func (app *application) MustClose(ctx context.Context) {
+	if err := app.Close(ctx); err != nil {
+		log.Fatalf("Failed to close application: %v", err)
 	}
 }
 
 func main() {
 	printBuildInfo()
-	app, err := newApplication(context.Background())
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	app, err := newApplication(ctx)
 	if err != nil {
 		log.Fatalf("Failed to create application: %v", err)
 	}
-	defer app.Close()
+	defer app.MustClose(ctx)
 
-	app.Run()
+	app.Run(ctx)
 }
 
 func printBuildInfo() {
