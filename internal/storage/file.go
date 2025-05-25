@@ -133,16 +133,8 @@ func (s *FileStorage) DeleteMany(ctx context.Context, userID string, shortURLs [
 
 	encoder := json.NewEncoder(writer)
 	s.memory.urls.Range(func(key, value interface{}) bool {
-		shortURL, ok1 := key.(string)
-		originalURL, ok2 := value.(string)
-		if ok1 && ok2 {
-			model := models.URL{
-				ShortURL:    shortURL,
-				OriginalURL: originalURL,
-			}
-			if err = encoder.Encode(model); err != nil {
-				return false
-			}
+		if err = encoder.Encode(value.(models.URL)); err != nil {
+			return false
 		}
 		return true
 	})
@@ -165,4 +157,9 @@ func (s *FileStorage) DeleteMany(ctx context.Context, userID string, shortURLs [
 	}
 
 	return nil
+}
+
+// GetStats retrieves service statistics and populates the provided Stats struct.
+func (s *FileStorage) GetStats(ctx context.Context, stats *models.Stats) error {
+	return s.memory.GetStats(ctx, stats)
 }

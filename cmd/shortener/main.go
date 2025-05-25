@@ -81,19 +81,7 @@ func (app *application) initServer() {
 
 // Run starts the HTTP server using the application's configuration.
 // It blocks until the server exits or fails.
-func (app *application) Run(ctx context.Context) {
-
-	go func() {
-		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := app.Close(shutdownCtx); err != nil {
-			log.Printf("Graceful shutdown failed: %v", err)
-		} else {
-			log.Println("Server shutdown gracefully")
-		}
-	}()
-
+func (app *application) Run() {
 	var err error
 	if app.Config.EnableHTTPS {
 		err = app.Server.ListenAndServeTLS(app.Config.CertFile, app.Config.KeyFile)
@@ -106,8 +94,8 @@ func (app *application) Run(ctx context.Context) {
 	}
 }
 
-// Close gracefully shuts down the application's server, storage, and logger.
-func (app *application) Close(ctx context.Context) error {
+// Shutdown gracefully shuts down the application's server, storage, and logger.
+func (app *application) Shutdown(ctx context.Context) error {
 	if err := app.Server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
@@ -121,13 +109,6 @@ func (app *application) Close(ctx context.Context) error {
 	return nil
 }
 
-// MustClose calls Close and exits the application if an error occurs.
-func (app *application) MustClose(ctx context.Context) {
-	if err := app.Close(ctx); err != nil {
-		log.Fatalf("Failed to close application: %v", err)
-	}
-}
-
 func main() {
 	printBuildInfo()
 
@@ -138,9 +119,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create application: %v", err)
 	}
-	defer app.MustClose(ctx)
 
-	app.Run(ctx)
+	go app.Run()
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := app.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Graceful shutdown failed: %v", err)
+	}
+
+	log.Println("Server stopped gracefully")
 }
 
 func printBuildInfo() {

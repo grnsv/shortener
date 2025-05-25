@@ -30,11 +30,12 @@ type StmtWrapper struct {
 
 // DBStorage provides methods to interact with the URLs database.
 type DBStorage struct {
-	db         DB
-	saveStmt   Stmt
-	getAllStmt Stmt
-	getStmt    Stmt
-	deleteStmt Stmt
+	db           DB
+	saveStmt     Stmt
+	getAllStmt   Stmt
+	getStmt      Stmt
+	deleteStmt   Stmt
+	getStatsStmt Stmt
 }
 
 // NewDBStorage creates a new DBStorage and initializes the database schema and prepared statements.
@@ -101,6 +102,16 @@ func (s *DBStorage) initDB(ctx context.Context) error {
 		return err
 	}
 
+	if s.getStatsStmt, err = s.db.PreparexContext(ctx, `
+		SELECT
+			COUNT(*) AS urls_count,
+			COUNT(DISTINCT user_id) AS users_count
+		FROM
+			urls;
+	`); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -116,6 +127,9 @@ func (s *DBStorage) Close() error {
 		return err
 	}
 	if err := s.deleteStmt.Close(); err != nil {
+		return err
+	}
+	if err := s.getStatsStmt.Close(); err != nil {
 		return err
 	}
 	if err := s.db.Close(); err != nil {
@@ -189,4 +203,9 @@ func (s *DBStorage) GetAll(ctx context.Context, userID string) ([]models.URL, er
 func (s *DBStorage) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
 	_, err := s.deleteStmt.ExecContext(ctx, userID, pq.Array(shortURLs))
 	return err
+}
+
+// GetStats retrieves service statistics and populates the provided Stats struct.
+func (s *DBStorage) GetStats(ctx context.Context, stats *models.Stats) error {
+	return s.getStatsStmt.GetContext(ctx, stats)
 }

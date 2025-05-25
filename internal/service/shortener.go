@@ -23,11 +23,12 @@ type Shortener interface {
 	StoragePinger
 	URLLister
 	URLDeleter
+	StatsRetriever
 }
 
 // URLShortener provides a method to shorten a single URL.
 type URLShortener interface {
-	ShortenURL(ctx context.Context, url string, userID string) (string, error)
+	ShortenURL(ctx context.Context, url string, userID string) (shortURL string, alreadyExists bool, err error)
 }
 
 // BatchShortener provides a method to shorten a batch of URLs.
@@ -53,6 +54,11 @@ type URLLister interface {
 // URLDeleter provides a method to delete multiple shortened URLs for a user.
 type URLDeleter interface {
 	DeleteMany(ctx context.Context, userID string, shortURLs []string) error
+}
+
+// StatsRetriever provides a method to retrieve service statistics.
+type StatsRetriever interface {
+	GetStats(ctx context.Context) (stats *models.Stats, err error)
 }
 
 // Service implements the Shortener interface and provides URL shortening services.
@@ -92,18 +98,20 @@ func (s *Service) generateShortURL(url string, userID string) models.URL {
 }
 
 // ShortenURL shortens the given URL for the specified user and returns the shortened URL.
-func (s *Service) ShortenURL(ctx context.Context, url string, userID string) (string, error) {
+func (s *Service) ShortenURL(ctx context.Context, url string, userID string) (shortURL string, alreadyExists bool, err error) {
 	model := s.generateShortURL(url, userID)
-	err := s.saver.Save(ctx, model)
+	shortURL = s.BaseURL + "/" + model.ShortURL
+	err = s.saver.Save(ctx, model)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
-			return s.BaseURL + "/" + model.ShortURL, err
+			alreadyExists = true
+			err = nil
+		} else {
+			shortURL = ""
 		}
-
-		return "", err
 	}
 
-	return s.BaseURL + "/" + model.ShortURL, nil
+	return
 }
 
 // ShortenBatch shortens a batch of URLs for the specified user and returns the batch response.
@@ -156,4 +164,14 @@ func (s *Service) GetAll(ctx context.Context, userID string) ([]models.URL, erro
 // DeleteMany deletes multiple shortened URLs for the specified user.
 func (s *Service) DeleteMany(ctx context.Context, userID string, shortURLs []string) error {
 	return s.deleter.DeleteMany(ctx, userID, shortURLs)
+}
+
+// GetStats returns statistics about the service, such as the number of URLs and users.
+func (s *Service) GetStats(ctx context.Context) (*models.Stats, error) {
+	stats := &models.Stats{}
+	if err := s.retriever.GetStats(ctx, stats); err != nil {
+		return nil, err
+	}
+
+	return stats, nil
 }

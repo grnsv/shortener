@@ -79,6 +79,21 @@ func (mr *MockShortenerMockRecorder) GetAll(arg0, arg1 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockShortener)(nil).GetAll), arg0, arg1)
 }
 
+// GetStats mocks base method.
+func (m *MockShortener) GetStats(arg0 context.Context) (*models.Stats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats", arg0)
+	ret0, _ := ret[0].(*models.Stats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockShortenerMockRecorder) GetStats(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockShortener)(nil).GetStats), arg0)
+}
+
 // PingStorage mocks base method.
 func (m *MockShortener) PingStorage(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -109,12 +124,13 @@ func (mr *MockShortenerMockRecorder) ShortenBatch(arg0, arg1, arg2 interface{}) 
 }
 
 // ShortenURL mocks base method.
-func (m *MockShortener) ShortenURL(arg0 context.Context, arg1, arg2 string) (string, error) {
+func (m *MockShortener) ShortenURL(arg0 context.Context, arg1, arg2 string) (string, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShortenURL", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ShortenURL indicates an expected call of ShortenURL.

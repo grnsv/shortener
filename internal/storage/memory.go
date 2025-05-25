@@ -26,14 +26,14 @@ func (s *MemoryStorage) Close() error {
 
 // Save stores a single URL mapping in memory.
 func (s *MemoryStorage) Save(ctx context.Context, model models.URL) error {
-	s.urls.Store(model.ShortURL, model.OriginalURL)
+	s.urls.Store(model.ShortURL, model)
 	return nil
 }
 
 // SaveMany stores multiple URL mappings in memory.
 func (s *MemoryStorage) SaveMany(ctx context.Context, models []models.URL) error {
 	for _, model := range models {
-		s.urls.Store(model.ShortURL, model.OriginalURL)
+		s.urls.Store(model.ShortURL, model)
 	}
 	return nil
 }
@@ -44,7 +44,7 @@ func (s *MemoryStorage) Get(ctx context.Context, short string) (string, error) {
 	if !ok {
 		return "", ErrNotFound
 	}
-	return value.(string), nil
+	return value.(models.URL).OriginalURL, nil
 }
 
 // Ping checks the availability of the in-memory storage. Always returns nil.
@@ -57,14 +57,7 @@ func (s *MemoryStorage) GetAll(ctx context.Context, userID string) ([]models.URL
 	var urls []models.URL
 
 	s.urls.Range(func(key, value interface{}) bool {
-		shortURL, ok1 := key.(string)
-		originalURL, ok2 := value.(string)
-		if ok1 && ok2 {
-			urls = append(urls, models.URL{
-				ShortURL:    shortURL,
-				OriginalURL: originalURL,
-			})
-		}
+		urls = append(urls, value.(models.URL))
 		return true
 	})
 
@@ -76,6 +69,19 @@ func (s *MemoryStorage) DeleteMany(ctx context.Context, userID string, shortURLs
 	for _, shortURL := range shortURLs {
 		s.urls.Delete(shortURL)
 	}
+
+	return nil
+}
+
+// GetStats retrieves service statistics and populates the provided Stats struct.
+func (s *MemoryStorage) GetStats(ctx context.Context, stats *models.Stats) error {
+	users := make(map[string]bool)
+	s.urls.Range(func(key, value any) bool {
+		stats.URLsCount++
+		users[value.(models.URL).UserID] = true
+		return true
+	})
+	stats.UsersCount = len(users)
 
 	return nil
 }

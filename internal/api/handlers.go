@@ -66,13 +66,14 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 
-	shortURL, err := h.shortener.ShortenURL(r.Context(), string(body), userID)
+	shortURL, alreadyExists, err := h.shortener.ShortenURL(r.Context(), string(body), userID)
 	if err != nil {
-		if errors.Is(err, storage.ErrAlreadyExist) {
-			w.WriteHeader(http.StatusConflict)
-		} else {
-			writeError(w)
-		}
+		writeError(w)
+		return
+	}
+
+	if alreadyExists {
+		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -108,13 +109,14 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	shortURL, err := h.shortener.ShortenURL(r.Context(), req.URL, userID)
+	shortURL, alreadyExists, err := h.shortener.ShortenURL(r.Context(), req.URL, userID)
 	if err != nil {
-		if errors.Is(err, storage.ErrAlreadyExist) {
-			w.WriteHeader(http.StatusConflict)
-		} else {
-			writeError(w)
-		}
+		writeError(w)
+		return
+	}
+
+	if alreadyExists {
+		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -256,6 +258,24 @@ func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// GetStats handles requests to retrieve service statistics.
+// It returns statistics as a JSON response or 500 Internal Server Error on failure.
+func (h *URLHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.shortener.GetStats(r.Context())
+	if err != nil {
+		h.logger.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(stats)
+	if err != nil {
+		h.logger.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func writeError(w http.ResponseWriter) {
