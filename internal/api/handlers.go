@@ -66,13 +66,14 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 
-	shortURL, err := h.shortener.ShortenURL(r.Context(), string(body), userID)
+	shortURL, alreadyExists, err := h.shortener.ShortenURL(r.Context(), string(body), userID)
 	if err != nil {
-		if errors.Is(err, storage.ErrAlreadyExist) {
-			w.WriteHeader(http.StatusConflict)
-		} else {
-			writeError(w)
-		}
+		writeError(w)
+		return
+	}
+
+	if alreadyExists {
+		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -108,13 +109,14 @@ func (h *URLHandler) ShortenURLJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	shortURL, err := h.shortener.ShortenURL(r.Context(), req.URL, userID)
+	shortURL, alreadyExists, err := h.shortener.ShortenURL(r.Context(), req.URL, userID)
 	if err != nil {
-		if errors.Is(err, storage.ErrAlreadyExist) {
-			w.WriteHeader(http.StatusConflict)
-		} else {
-			writeError(w)
-		}
+		writeError(w)
+		return
+	}
+
+	if alreadyExists {
+		w.WriteHeader(http.StatusConflict)
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}

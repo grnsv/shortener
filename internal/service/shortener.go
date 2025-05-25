@@ -27,7 +27,7 @@ type Shortener interface {
 
 // URLShortener provides a method to shorten a single URL.
 type URLShortener interface {
-	ShortenURL(ctx context.Context, url string, userID string) (string, error)
+	ShortenURL(ctx context.Context, url string, userID string) (shortURL string, alreadyExists bool, err error)
 }
 
 // BatchShortener provides a method to shorten a batch of URLs.
@@ -92,18 +92,20 @@ func (s *Service) generateShortURL(url string, userID string) models.URL {
 }
 
 // ShortenURL shortens the given URL for the specified user and returns the shortened URL.
-func (s *Service) ShortenURL(ctx context.Context, url string, userID string) (string, error) {
+func (s *Service) ShortenURL(ctx context.Context, url string, userID string) (shortURL string, alreadyExists bool, err error) {
 	model := s.generateShortURL(url, userID)
-	err := s.saver.Save(ctx, model)
+	shortURL = s.BaseURL + "/" + model.ShortURL
+	err = s.saver.Save(ctx, model)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
-			return s.BaseURL + "/" + model.ShortURL, err
+			alreadyExists = true
+			err = nil
+		} else {
+			shortURL = ""
 		}
-
-		return "", err
 	}
 
-	return s.BaseURL + "/" + model.ShortURL, nil
+	return
 }
 
 // ShortenBatch shortens a batch of URLs for the specified user and returns the batch response.

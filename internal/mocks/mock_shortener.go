@@ -109,12 +109,13 @@ func (mr *MockShortenerMockRecorder) ShortenBatch(arg0, arg1, arg2 interface{}) 
 }
 
 // ShortenURL mocks base method.
-func (m *MockShortener) ShortenURL(arg0 context.Context, arg1, arg2 string) (string, error) {
+func (m *MockShortener) ShortenURL(arg0 context.Context, arg1, arg2 string) (string, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShortenURL", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ShortenURL indicates an expected call of ShortenURL.
