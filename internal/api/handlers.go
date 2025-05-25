@@ -260,6 +260,24 @@ func (h *URLHandler) DeleteURLs(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// GetStats handles requests to retrieve service statistics.
+// It returns statistics as a JSON response or 500 Internal Server Error on failure.
+func (h *URLHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.shortener.GetStats(r.Context())
+	if err != nil {
+		h.logger.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(stats)
+	if err != nil {
+		h.logger.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
 func writeError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusBadRequest)
 }

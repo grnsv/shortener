@@ -30,6 +30,7 @@ type Saver interface {
 type Retriever interface {
 	Get(ctx context.Context, short string) (string, error)
 	GetAll(ctx context.Context, userID string) ([]models.URL, error)
+	GetStats(ctx context.Context, stats *models.Stats) error
 }
 
 // Deleter provides a method for deleting multiple short URLs for a user.

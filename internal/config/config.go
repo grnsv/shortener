@@ -27,6 +27,7 @@ type Config struct {
 	CertFile        string     `env:"CERT_FILE" json:"cert_file"`                 // Cert file
 	KeyFile         string     `env:"KEY_FILE" json:"key_file"`                   // Key file
 	Config          string     `env:"CONFIG"`                                     // Config file
+	TrustedSubnet   string     `env:"TRUSTED_SUBNET" json:"trusted_subnet"`       // Trusted subnet
 }
 
 // NetAddress represents a network address with a host and port.
@@ -174,6 +175,7 @@ func parseFlags() error {
 	set.BoolVar(&config.EnableHTTPS, "s", config.EnableHTTPS, "Enable HTTPS")
 	set.StringVar(&config.Config, "c", config.Config, "Config file")
 	set.StringVar(&config.Config, "config", config.Config, "Config file")
+	set.StringVar(&config.TrustedSubnet, "t", config.TrustedSubnet, "Trusted subnet")
 	return set.Parse(os.Args[1:])
 }
 
