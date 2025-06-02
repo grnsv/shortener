@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "github.com/grnsv/shortener/internal/api/pb;pb";
+
+message ShortenRequest {
+  string url = 1;
+}
+
+message ShortenResponse {
+  string result = 1;
+}
+
+message ExpandRequest {
+  string id = 1;
+}
+
+message ExpandResponse {
+  string url = 1;
+}
+
+message Empty {}
+
+message BatchRequestItem {
+  string correlation_id = 1;
+  string original_url = 2;
+}
+
+message BatchRequest {
+  repeated BatchRequestItem items = 1;
+}
+
+message BatchResponseItem {
+  string correlation_id = 1;
+  string short_url = 2;
+}
+
+message BatchResponse {
+  repeated BatchResponseItem items = 1;
+}
+
+message URLItem {
+  string user_id = 1;
+  string short_url = 2;
+  string original_url = 3;
+}
+
+message GetURLsResponse {
+  repeated URLItem urls = 1;
+}
+
+message DeleteURLsRequest {
+  repeated string short_urls = 1;
+}
+
+message StatsResponse {
+  int32 urls = 1;
+  int32 users = 2;
+}
+
+service Shortener {
+  rpc ShortenURL(ShortenRequest) returns (ShortenResponse);
+  rpc ShortenBatch(BatchRequest) returns (BatchResponse);
+  rpc ExpandURL(ExpandRequest) returns (ExpandResponse);
+  rpc PingDB(Empty) returns (Empty);
+  rpc GetURLs(Empty) returns (GetURLsResponse);
+  rpc DeleteURLs(DeleteURLsRequest) returns (Empty);
+  rpc GetStats(Empty) returns (StatsResponse);
+}

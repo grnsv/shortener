@@ -180,10 +180,11 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, storage.ErrDeleted) {
 			w.WriteHeader(http.StatusGone)
 			return
-		} else {
-			writeError(w)
-			return
 		}
+
+		h.logger.Error(err)
+		writeError(w)
+		return
 	}
 
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -193,6 +194,7 @@ func (h *URLHandler) ExpandURL(w http.ResponseWriter, r *http.Request) {
 // It returns 200 OK if the storage is reachable, otherwise 500 Internal Server Error.
 func (h *URLHandler) PingDB(w http.ResponseWriter, r *http.Request) {
 	if err := h.shortener.PingStorage(r.Context()); err != nil {
+		h.logger.Error(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
