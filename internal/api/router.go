@@ -44,6 +44,9 @@ func NewRouter(h *URLHandler, config *config.Config, logger logger.Logger) chi.R
 			r.Get("/", h.GetURLs)
 			r.Delete("/", h.DeleteURLs)
 		})
+		r.With(middleware.Internal(config.TrustedSubnet)).Route("/internal", func(r chi.Router) {
+			r.Get("/stats", h.GetStats)
+		})
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)

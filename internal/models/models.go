@@ -34,8 +34,14 @@ type BatchResponseItem struct {
 // URL represents a shortened URL mapping with metadata.
 type URL struct {
 	UUID        string `db:"id" json:"-"`
-	UserID      string `db:"user_id" json:"-"`
+	UserID      string `db:"user_id" json:"user_id"`
 	ShortURL    string `db:"short_url" json:"short_url"`
 	OriginalURL string `db:"original_url" json:"original_url"`
 	IsDeleted   bool   `db:"is_deleted" json:"-"`
+}
+
+// Stats represents service statistics including the total number of shortened URLs and users.
+type Stats struct {
+	URLsCount  int `db:"urls_count" json:"urls"`   // количество сокращённых URL в сервисе
+	UsersCount int `db:"users_count" json:"users"` // количество пользователей в сервисе
 }

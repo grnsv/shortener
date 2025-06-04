@@ -100,15 +100,17 @@ var _ = Describe("ShortenURL", func() {
 
 	It("should shorten a single URL", func() {
 		store.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
-		shortURL, err := shortener.ShortenURL(context.Background(), "http://example.com/1", userID)
+		shortURL, alreadyExists, err := shortener.ShortenURL(context.Background(), "http://example.com/1", userID)
 		Expect(err).To(BeNil())
+		Expect(alreadyExists).To(BeFalse())
 		Expect(shortURL).To(HavePrefix("http://short/"))
 	})
 
 	It("should return existing short URL if already exists", func() {
 		store.EXPECT().Save(gomock.Any(), gomock.Any()).Return(storage.ErrAlreadyExist)
-		shortURL, err := shortener.ShortenURL(context.Background(), "http://example.com/1", userID)
-		Expect(err).To(HaveOccurred())
+		shortURL, alreadyExists, err := shortener.ShortenURL(context.Background(), "http://example.com/1", userID)
+		Expect(err).To(BeNil())
+		Expect(alreadyExists).To(BeTrue())
 		Expect(shortURL).To(HavePrefix("http://short/"))
 	})
 })

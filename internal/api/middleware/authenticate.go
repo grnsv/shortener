@@ -77,8 +77,12 @@ func getClaims(r *http.Request, key string) (*Claims, error) {
 		return nil, err
 	}
 
+	return parseClaims(cookie.Value, key)
+}
+
+func parseClaims(tokenStr string, key string) (*Claims, error) {
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(cookie.Value, claims,
+	token, err := jwt.ParseWithClaims(tokenStr, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			if t.Method == nil || t.Method.Alg() != signingMethod.Alg() {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -108,7 +112,7 @@ func refreshCookie(w http.ResponseWriter, key string, userID string) error {
 
 // BuildAuthCookie builds a new authentication cookie for the given user ID.
 func BuildAuthCookie(key string, userID string) (*http.Cookie, error) {
-	tokenString, err := buildJWTString(key, userID)
+	tokenString, err := BuildJWTString(key, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +128,9 @@ func BuildAuthCookie(key string, userID string) (*http.Cookie, error) {
 	return cookie, nil
 }
 
-func buildJWTString(key string, userID string) (string, error) {
+// BuildJWTString creates a signed JWT string for the given user ID using the provided key.
+// It returns the signed JWT as a string.
+func BuildJWTString(key string, userID string) (string, error) {
 	token := jwt.NewWithClaims(signingMethod, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject: userID,
